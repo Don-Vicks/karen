@@ -97,9 +97,7 @@ wallet
 
     if (wallets.length === 0) {
       console.log(
-        chalk.yellow(
-          'No wallets found. Create one with: karen wallet create',
-        ),
+        chalk.yellow('No wallets found. Create one with: karen wallet create'),
       )
       return
     }
@@ -565,7 +563,7 @@ agent
   .requiredOption('-s, --strategy <strategy>', 'Agent trading strategy')
   .option(
     '-l, --llm <provider>',
-    'LLM provider (openai or anthropic)',
+    'LLM provider (openai, anthropic, grok, gemini)',
     'openai',
   )
   .option('-m, --model <model>', 'LLM model', 'gpt-4o')
@@ -593,9 +591,7 @@ agent
       )
       console.log(chalk.white(`   Strategy: ${config.strategy}`))
       console.log(
-        chalk.gray(
-          `\n   Start with: karen agent start --name ${config.name}`,
-        ),
+        chalk.gray(`\n   Start with: karen agent start --name ${config.name}`),
       )
     } catch (error: any) {
       console.error(chalk.red(`❌ Error: ${error.message}`))

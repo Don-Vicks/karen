@@ -1,3 +1,5 @@
+import fs from 'fs'
+import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { AuditLogger } from '../core/audit-logger'
 import { Guardrails } from '../core/transaction/guardrails'
@@ -47,6 +49,41 @@ export class Orchestrator {
     this.guardrails = guardrails
     this.logger = logger
     this.memory = new MemoryStore()
+    this.loadAgents()
+  }
+
+  private dataFile = path.resolve(process.cwd(), 'data', 'agents.json')
+
+  private loadAgents(): void {
+    if (!fs.existsSync(this.dataFile)) return
+    try {
+      const data = fs.readFileSync(this.dataFile, 'utf-8')
+      const configs: AgentConfig[] = JSON.parse(data)
+      for (const config of configs) {
+        config.status = 'idle' // Reset status on load
+
+        const skills = createDefaultSkillRegistry()
+        const runtime = new AgentRuntime(
+          config,
+          this.walletManager,
+          this.transactionEngine,
+          this.logger,
+          skills,
+          this.memory,
+        )
+        this.agents.set(config.id, runtime)
+        this.configs.set(config.id, config)
+      }
+    } catch (e: any) {
+      console.error('Failed to load agents:', e.message)
+    }
+  }
+
+  private saveAgents(): void {
+    const dir = path.dirname(this.dataFile)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    const configs = Array.from(this.configs.values())
+    fs.writeFileSync(this.dataFile, JSON.stringify(configs, null, 2))
   }
 
   /**
@@ -114,6 +151,7 @@ export class Orchestrator {
 
     this.agents.set(agentId, runtime)
     this.configs.set(agentId, config)
+    this.saveAgents()
 
     return config
   }

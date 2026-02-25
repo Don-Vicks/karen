@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SolClaw Dashboard — Autonomous Wallet Infrastructure",
+  title: "Karen Dashboard — Autonomous Wallet Infrastructure",
   description: "Monitor and manage AI agents with autonomous Solana wallets",
 };
 
@@ -21,7 +21,7 @@ export default function RootLayout({
             <div className="sidebar-logo">
               <div className="logo-icon">⚡</div>
               <div>
-                <h1>SolClaw</h1>
+                <h1>Karen</h1>
                 <span className="version">v0.1.0</span>
               </div>
             </div>
@@ -34,6 +34,10 @@ export default function RootLayout({
               <Link href="/agents" className="nav-link">
                 <span className="icon">🤖</span>
                 Agents
+              </Link>
+              <Link href="/chat" className="nav-link">
+                <span className="icon">💬</span>
+                Chat
               </Link>
               <Link href="/wallets" className="nav-link">
                 <span className="icon">💰</span>

@@ -137,7 +137,7 @@ export interface AgentConfig {
   id: string
   name: string
   walletId: string
-  llmProvider: 'openai' | 'anthropic'
+  llmProvider: 'openai' | 'anthropic' | 'grok' | 'gemini'
   llmModel: string
   strategy: string
   guardrails: GuardrailConfig

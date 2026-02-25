@@ -16,7 +16,7 @@ interface Transaction {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "solclaw-dev-secret";
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "karen-dev-secret";
 
 async function apiFetch(path: string) {
   try {

@@ -13,6 +13,8 @@ import { StakingAdapter } from '../protocols/staking'
 import { TokenLauncherAdapter } from '../protocols/token-launcher'
 import { WrappedSolAdapter } from '../protocols/wrapped-sol'
 import { AnthropicProvider } from './llm/anthropic'
+import { GeminiProvider } from './llm/gemini'
+import { GrokProvider } from './llm/grok'
 import { OpenAIProvider } from './llm/openai'
 import { LLMMessage, LLMProvider } from './llm/provider'
 import { MemoryStore } from './memory/memory-store'
@@ -67,6 +69,10 @@ export class AgentRuntime {
     // Initialize LLM provider
     if (config.llmProvider === 'anthropic') {
       this.llm = new AnthropicProvider()
+    } else if (config.llmProvider === 'grok') {
+      this.llm = new GrokProvider()
+    } else if (config.llmProvider === 'gemini') {
+      this.llm = new GeminiProvider()
     } else {
       this.llm = new OpenAIProvider()
     }

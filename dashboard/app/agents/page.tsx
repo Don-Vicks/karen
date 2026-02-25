@@ -15,7 +15,7 @@ interface Agent {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "solclaw-dev-secret";
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "karen-dev-secret";
 
 async function apiFetch(path: string, options?: RequestInit) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -107,7 +107,7 @@ export default function AgentsPage() {
               No agents created yet. Use the CLI to create one:
               <br />
               <code className="mono" style={{ color: "var(--accent-primary)", marginTop: 8, display: "block" }}>
-                solclaw agent create --name &quot;Trader&quot; --strategy &quot;DCA into USDC&quot;
+                karen agent create --name &quot;Trader&quot; --strategy &quot;DCA into USDC&quot;
               </code>
             </p>
           </div>

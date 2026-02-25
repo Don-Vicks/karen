@@ -16,7 +16,7 @@ interface Balance {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "solclaw-dev-secret";
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "karen-dev-secret";
 
 async function apiFetch(path: string, options?: RequestInit) {
   try {
@@ -93,7 +93,7 @@ export default function WalletsPage() {
               No wallets yet. Create one with the CLI:
               <br />
               <code className="mono" style={{ color: "var(--accent-primary)", marginTop: 8, display: "block" }}>
-                solclaw wallet create --name &quot;my-wallet&quot;
+                karen wallet create --name &quot;my-wallet&quot;
               </code>
             </p>
           </div>

@@ -12,7 +12,7 @@ interface ApiKey {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "solclaw-dev-secret";
+const API_SECRET = process.env.NEXT_PUBLIC_API_SECRET || "karen-dev-secret";
 
 async function apiFetch(path: string, options?: RequestInit) {
   try {
@@ -74,7 +74,7 @@ export default function ApiKeysPage() {
       <div className="page-header">
         <h1 className="section-title">API Keys</h1>
         <p className="section-subtitle">
-          Manage API keys for external AI agents to access SolClaw
+          Manage API keys for external AI agents to access Karen
         </p>
       </div>
 
@@ -118,7 +118,7 @@ export default function ApiKeysPage() {
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-title" style={{ marginBottom: 8 }}>Integration Guide</div>
         <div className="card-subtitle" style={{ marginBottom: 16 }}>
-          External agents can use SolClaw via REST API or MCP
+          External agents can use Karen via REST API or MCP
         </div>
         <div className="grid-2">
           <div style={{ padding: 16, background: "var(--bg-glass)", borderRadius: "var(--radius-sm)" }}>
@@ -133,9 +133,9 @@ export default function ApiKeysPage() {
             <pre className="mono" style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.8 }}>
               {`{
   "mcpServers": {
-    "solclaw": {
+    "karen": {
       "command": "npx",
-      "args": ["solclaw-mcp"]
+      "args": ["karen-mcp"]
     }
   }
 }`}
