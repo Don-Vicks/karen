@@ -1,4 +1,4 @@
-import OpenAI from 'openai'
+import { FunctionDeclaration, GoogleGenAI, Type } from '@google/genai'
 import { SkillInvocation } from '../../core/types'
 import {
   LLMMessage,
@@ -10,16 +10,19 @@ import {
 // ============================================
 // Google Gemini LLM Provider
 // ============================================
-// Uses the OpenAI-compatible API at generativelanguage.googleapis.com
+// Uses the official @google/genai SDK
 
 export class GeminiProvider implements LLMProvider {
   name = 'gemini'
-  private client: OpenAI
+  private client: GoogleGenAI
 
   constructor(apiKey?: string) {
-    this.client = new OpenAI({
-      apiKey: apiKey || process.env.GEMINI_API_KEY,
-      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    const key = apiKey || process.env.GEMINI_API_KEY
+    if (!key) {
+      throw new Error('GEMINI_API_KEY is not set in environment variables')
+    }
+    this.client = new GoogleGenAI({
+      apiKey: key,
     })
   }
 
@@ -28,49 +31,71 @@ export class GeminiProvider implements LLMProvider {
     tools: LLMToolDefinition[],
     model: string = process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   ): Promise<LLMResponse> {
-    const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = tools.map(
-      (t) => ({
-        type: 'function' as const,
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.parameters,
-        },
-      }),
-    )
+    // Convert generic tools into Gemini Native Function Declarations
+    const functionDeclarations: FunctionDeclaration[] = tools.map((t) => {
+      // Gemini strict type mapping
+      const transformSchema = (schema: any): any => {
+        if (!schema) return undefined
+        const out: any = { type: schema.type.toUpperCase() as Type }
+        if (schema.description) out.description = schema.description
+        if (schema.properties) {
+          out.properties = {}
+          for (const key of Object.keys(schema.properties)) {
+            out.properties[key] = transformSchema(schema.properties[key])
+          }
+        }
+        return out
+      }
 
-    const response = await this.client.chat.completions.create({
-      model,
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-      tools: openaiTools.length > 0 ? openaiTools : undefined,
-      tool_choice: openaiTools.length > 0 ? 'auto' : undefined,
+      return {
+        name: t.name,
+        description: t.description,
+        ...(t.parameters &&
+        Object.keys(t.parameters.properties || {}).length > 0
+          ? { parameters: transformSchema(t.parameters) }
+          : {}),
+      }
     })
 
-    const choice = response.choices[0]
+    const geminiTools =
+      functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
+
+    // Convert messages to Gemini syntax
+    const geminiMessages = messages.map((m) => {
+      // Gemini roles are 'user', 'user', 'model', or 'system' - but system is a distinct parameter in v1
+      return {
+        role: m.role === 'assistant' ? 'model' : 'user', // Map everything to user or model
+        parts: [{ text: m.content }],
+      }
+    })
+
+    const response = await this.client.models.generateContent({
+      model: model,
+      contents: geminiMessages,
+      config: {
+        tools: geminiTools,
+      },
+    })
+
     const toolCalls: SkillInvocation[] = []
 
-    if (choice.message.tool_calls) {
-      for (const tc of choice.message.tool_calls) {
-        try {
+    if (response.functionCalls && response.functionCalls.length > 0) {
+      for (const call of response.functionCalls) {
+        if (call.name) {
           toolCalls.push({
-            skill: tc.function.name,
-            params: JSON.parse(tc.function.arguments),
+            skill: call.name,
+            params: (call.args as Record<string, unknown>) || {},
           })
-        } catch {
-          // Skip malformed tool calls
         }
       }
     }
 
     return {
-      content: choice.message.content || '',
-      toolCalls,
+      content: response.text || '',
+      toolCalls: toolCalls,
       tokensUsed: {
-        input: response.usage?.prompt_tokens || 0,
-        output: response.usage?.completion_tokens || 0,
+        input: response.usageMetadata?.promptTokenCount || 0,
+        output: response.usageMetadata?.candidatesTokenCount || 0,
       },
     }
   }

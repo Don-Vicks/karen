@@ -34,7 +34,7 @@ export class AgentRuntime {
   private walletManager: WalletManager
   private transactionEngine: TransactionEngine
   private logger: AuditLogger
-  private llm: LLMProvider
+  private llm?: LLMProvider
   private skills: SkillRegistry
   private memory: MemoryStore
   private jupiter: JupiterAdapter
@@ -66,16 +66,26 @@ export class AgentRuntime {
     this.staking = new StakingAdapter()
     this.wrappedSol = new WrappedSolAdapter()
 
-    // Initialize LLM provider
-    if (config.llmProvider === 'anthropic') {
+    this.staking = new StakingAdapter()
+    this.wrappedSol = new WrappedSolAdapter()
+  }
+
+  // Lazy load LLM so it doesn't crash on startup if an API key is missing
+  // for an idle agent.
+  private getLlm(): LLMProvider {
+    if (this.llm) return this.llm
+
+    if (this.config.llmProvider === 'anthropic') {
       this.llm = new AnthropicProvider()
-    } else if (config.llmProvider === 'grok') {
+    } else if (this.config.llmProvider === 'grok') {
       this.llm = new GrokProvider()
-    } else if (config.llmProvider === 'gemini') {
+    } else if (this.config.llmProvider === 'gemini') {
       this.llm = new GeminiProvider()
     } else {
       this.llm = new OpenAIProvider()
     }
+
+    return this.llm
   }
 
   // ========== Lifecycle ==========
@@ -139,7 +149,11 @@ export class AgentRuntime {
       },
     ]
 
-    const response = await this.llm.chat(messages, [])
+    const response = await this.getLlm().chat(
+      messages,
+      this.skills.getToolDefinitions(),
+      this.config.llmModel,
+    )
     return response.content
   }
 
@@ -269,9 +283,16 @@ export class AgentRuntime {
     ]
 
     const tools = this.skills.getToolDefinitions()
-    const response = await this.llm.chat(messages, tools)
+    const response = await this.getLlm().chat(
+      messages,
+      tools,
+      this.config.llmModel,
+    )
 
-    const action = response.toolCalls.length > 0 ? response.toolCalls[0] : null
+    const action =
+      response.toolCalls && response.toolCalls.length > 0
+        ? response.toolCalls[0]
+        : null
 
     return {
       reasoning: response.content || 'No explicit reasoning provided.',

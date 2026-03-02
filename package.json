@@ -28,6 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@google/genai": "^1.43.0",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.5.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.5.1",
@@ -45,6 +46,7 @@
     "express": "^4.21.0",
     "openai": "^4.77.0",
     "ora": "^8.1.1",
+    "telegraf": "^4.16.3",
     "tweetnacl": "^1.0.3",
     "uuid": "^11.0.0"
   },

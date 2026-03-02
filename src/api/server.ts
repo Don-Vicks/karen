@@ -12,6 +12,7 @@ import { SplTokenAdapter } from '../protocols/spl-token'
 import { StakingAdapter } from '../protocols/staking'
 import { TokenLauncherAdapter } from '../protocols/token-launcher'
 import { WrappedSolAdapter } from '../protocols/wrapped-sol'
+import { TelegramService } from './telegram'
 
 // ============================================
 // REST API Server
@@ -32,6 +33,7 @@ export class ApiServer {
   private wrappedSol: WrappedSolAdapter
   private apiKeys: Map<string, ApiKeyRecord> = new Map()
   private apiSecret: string
+  private telegramService?: TelegramService
 
   constructor(
     walletManager: WalletManager,
@@ -51,6 +53,13 @@ export class ApiServer {
     this.staking = new StakingAdapter()
     this.wrappedSol = new WrappedSolAdapter()
     this.apiSecret = process.env.API_SECRET || 'karen-dev-secret'
+
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+      this.telegramService = new TelegramService(
+        process.env.TELEGRAM_BOT_TOKEN,
+        orchestrator,
+      )
+    }
 
     this.app = express()
     this.setupMiddleware()
@@ -636,6 +645,10 @@ export class ApiServer {
       console.log(`   Health: http://localhost:${serverPort}/api/v1/health`)
       console.log(`   Docs:   See SKILLS.md for API reference\n`)
     })
+
+    if (this.telegramService) {
+      this.telegramService.start()
+    }
   }
 
   getApp(): express.Application {
