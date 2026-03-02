@@ -108,15 +108,21 @@ export class Orchestrator {
       )
     }
 
+    const rawProvider =
+      options.llmProvider ||
+      (process.env.DEFAULT_LLM_PROVIDER as any) ||
+      'openai'
+    let defaultModel = 'gpt-4o'
+    if (rawProvider === 'anthropic') defaultModel = 'claude-3-5-sonnet-20241022'
+    if (rawProvider === 'grok') defaultModel = 'grok-3-latest'
+    if (rawProvider === 'gemini') defaultModel = 'gemini-2.0-flash'
+
     const config: AgentConfig = {
       id: agentId,
       name: options.name,
       walletId: walletInfo.id,
-      llmProvider:
-        options.llmProvider ||
-        (process.env.DEFAULT_LLM_PROVIDER as any) ||
-        'openai',
-      llmModel: options.llmModel || process.env.DEFAULT_LLM_MODEL || 'gpt-4o',
+      llmProvider: rawProvider,
+      llmModel: options.llmModel || defaultModel,
       strategy: options.strategy,
       guardrails: {
         ...DEFAULT_GUARDRAIL_CONFIG,

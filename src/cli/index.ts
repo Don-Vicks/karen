@@ -566,7 +566,7 @@ agent
     'LLM provider (openai, anthropic, grok, gemini)',
     'openai',
   )
-  .option('-m, --model <model>', 'LLM model', 'gpt-4o')
+  .option('-m, --model <model>', 'LLM model (defaults depend on provider)')
   .option('--interval <ms>', 'Loop interval in milliseconds', '30000')
   .option('--max-per-tx <sol>', 'Max SOL per transaction', '2')
   .option('--daily-limit <sol>', 'Daily spending limit in SOL', '10')

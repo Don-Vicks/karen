@@ -26,7 +26,7 @@ export class GeminiProvider implements LLMProvider {
   async chat(
     messages: LLMMessage[],
     tools: LLMToolDefinition[],
-    model: string = process.env.GEMINI_MODEL || 'gemini-3.0',
+    model: string = process.env.GEMINI_MODEL || 'gemini-2.0-flash',
   ): Promise<LLMResponse> {
     const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = tools.map(
       (t) => ({
