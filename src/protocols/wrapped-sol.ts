@@ -24,7 +24,7 @@ export class WrappedSolAdapter {
     amountSol: number,
   ): Promise<{ signature: string; wsolAccount: string; amount: number }> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const lamports = Math.round(amountSol * LAMPORTS_PER_SOL)
 
     const ata = await getAssociatedTokenAddress(NATIVE_MINT, payer.publicKey)
@@ -62,7 +62,9 @@ export class WrappedSolAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -85,7 +87,7 @@ export class WrappedSolAdapter {
     walletId: string,
   ): Promise<{ signature: string; amount: number }> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
 
     const ata = await getAssociatedTokenAddress(NATIVE_MINT, payer.publicKey)
 
@@ -110,7 +112,9 @@ export class WrappedSolAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,

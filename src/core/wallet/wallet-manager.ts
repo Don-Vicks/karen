@@ -1,168 +1,207 @@
-import { Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
-import * as bip39 from 'bip39'
-import { derivePath } from 'ed25519-hd-key'
+import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
+import { ApiKeyStamper } from '@turnkey/api-key-stamper'
+import { TurnkeyClient } from '@turnkey/http'
+import fs from 'fs'
+import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { getConnection } from '../solana/connection'
 import { TokenBalance, WalletBalance, WalletInfo } from '../types'
-import { Keystore } from './keystore'
+import { TurnkeySigner } from './turnkey-signer'
 
 // ============================================
-// Wallet Manager
+// Turnkey Wallet Manager
 // ============================================
-// Handles wallet creation, HD derivation, balance checks
+// Securely handles dynamic Solana wallet creation on Turnkey enclave
+
+export interface WalletMetadata {
+  id: string
+  name: string
+  publicKey: string
+  turnkeyWalletId: string
+  createdAt: string
+  tags: string[]
+}
 
 export class WalletManager {
-  private keystore: Keystore
-  private password: string
-  private masterSeed?: Buffer
+  private client: TurnkeyClient
+  private organizationId: string
+  private metadataPath: string
+  private wallets: Map<string, WalletMetadata> = new Map()
 
-  constructor(password: string, keystoreDir?: string) {
-    this.keystore = new Keystore(keystoreDir)
-    this.password = password
+  constructor(password: string, metadataDir?: string) {
+    this.metadataPath = path.resolve(
+      metadataDir || process.cwd(),
+      'data',
+      'turnkey-wallets.json',
+    )
+
+    // Ensure metadata directory exists
+    const dir = path.dirname(this.metadataPath)
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+
+    this.organizationId = process.env.TURNKEY_ORGANIZATION_ID!
+
+    // Auth stamper for Turnkey API
+    const stamper = new ApiKeyStamper({
+      apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY!,
+      apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY!,
+    })
+    this.client = new TurnkeyClient(
+      { baseUrl: 'https://api.turnkey.com' },
+      stamper,
+    )
+
+    this.loadMetadata()
+  }
+
+  private loadMetadata(): void {
+    if (!fs.existsSync(this.metadataPath)) return
+    try {
+      const data = fs.readFileSync(this.metadataPath, 'utf8')
+      const parsed: WalletMetadata[] = JSON.parse(data)
+      parsed.forEach((w) => this.wallets.set(w.id, w))
+    } catch (err) {
+      console.error('Failed to load Turnkey wallet metadata:', err)
+    }
+  }
+
+  private saveMetadata(): void {
+    fs.writeFileSync(
+      this.metadataPath,
+      JSON.stringify(Array.from(this.wallets.values()), null, 2),
+    )
   }
 
   // ========== Wallet Creation ==========
 
   /**
-   * Create a new random wallet
+   * Create a new secure wallet via Turnkey API
    */
   async createWallet(name: string, tags: string[] = []): Promise<WalletInfo> {
-    const keypair = Keypair.generate()
     const id = uuidv4()
 
-    await this.keystore.encrypt(keypair, this.password, {
+    // 1. Send API request to Turnkey to provision a new Web3 Solana Wallet
+    const response = await this.client.createWallet({
+      type: 'ACTIVITY_TYPE_CREATE_WALLET',
+      organizationId: this.organizationId,
+      parameters: {
+        walletName: `Karen Agent Wallet - ${name}`,
+        accounts: [
+          {
+            curve: 'CURVE_ED25519',
+            pathFormat: 'PATH_FORMAT_BIP32',
+            path: "m/44'/501'/0'/0'", // Solana derivation
+            addressFormat: 'ADDRESS_FORMAT_SOLANA',
+          },
+        ],
+      },
+      timestampMs: String(Date.now()),
+    })
+
+    const walletId = response.activity.result.createWalletResult?.walletId
+    const address = response.activity.result.createWalletResult?.addresses?.[0]
+
+    if (!walletId || !address) {
+      throw new Error(
+        `Turnkey Wallet Creation Failed: ${JSON.stringify(response.activity.status)}`,
+      )
+    }
+
+    const metadata: WalletMetadata = {
       id,
       name,
+      publicKey: address,
+      turnkeyWalletId: walletId,
+      createdAt: new Date().toISOString(),
       tags,
-    })
+    }
+
+    this.wallets.set(id, metadata)
+    this.saveMetadata()
 
     return {
       id,
       name,
-      publicKey: keypair.publicKey.toBase58(),
-      createdAt: new Date().toISOString(),
+      publicKey: address,
+      createdAt: metadata.createdAt,
       tags,
     }
   }
 
   /**
-   * Create a wallet derived from master mnemonic (HD derivation)
-   * Each agent gets a unique, deterministic wallet from the same seed
+   * In Turnkey we disable HD derivation locally and treat all creations linearly via API
    */
   async createDerivedWallet(
     name: string,
-    mnemonic: string,
-    derivationIndex: number,
+    _mnemonic: string, // Unused by Turnkey
+    _derivationIndex: number,
     tags: string[] = [],
   ): Promise<WalletInfo> {
-    const seed = await bip39.mnemonicToSeed(mnemonic)
-    const path = `m/44'/501'/${derivationIndex}'/0'`
-    const derived = derivePath(path, seed.toString('hex'))
-    const keypair = Keypair.fromSeed(derived.key)
-    const id = uuidv4()
-
-    await this.keystore.encrypt(keypair, this.password, {
-      id,
-      name,
-      derivationIndex,
-      tags,
-    })
-
-    return {
-      id,
-      name,
-      publicKey: keypair.publicKey.toBase58(),
-      createdAt: new Date().toISOString(),
-      derivationIndex,
-      tags,
-    }
+    // Treat as standard secure creation within the Enclave
+    return this.createWallet(name, tags)
   }
 
   /**
-   * Generate a new master mnemonic for HD derivation
+   * Unsupported locally. Requires secure enclave import.
    */
-  static generateMnemonic(): string {
-    return bip39.generateMnemonic(256) // 24 words
-  }
-
-  /**
-   * Import a wallet from a secret key (base58 or Uint8Array)
-   */
-  async importWallet(
-    name: string,
-    secretKey: Uint8Array,
-    tags: string[] = [],
-  ): Promise<WalletInfo> {
-    const keypair = Keypair.fromSecretKey(secretKey)
-    const id = uuidv4()
-
-    await this.keystore.encrypt(keypair, this.password, {
-      id,
-      name,
-      tags,
-    })
-
-    return {
-      id,
-      name,
-      publicKey: keypair.publicKey.toBase58(),
-      createdAt: new Date().toISOString(),
-      tags,
-    }
+  async importWallet(): Promise<WalletInfo> {
+    throw new Error(
+      'Local Import is disabled when using Turnkey infrastructure. Provision new wallets instead.',
+    )
   }
 
   // ========== Wallet Access ==========
 
   /**
-   * Get the keypair for a wallet (decrypts from keystore)
+   * Returns a custom Signer payload proxy instead of raw Keypair
    */
-  async getKeypair(walletId: string): Promise<Keypair> {
-    return this.keystore.decrypt(walletId, this.password)
+  async getSigner(walletId: string): Promise<TurnkeySigner> {
+    const wallet = this.wallets.get(walletId)
+    if (!wallet) throw new Error(`Wallet not found: ${walletId}`)
+
+    return new TurnkeySigner(
+      wallet.publicKey,
+      wallet.turnkeyWalletId,
+      wallet.publicKey,
+    )
   }
 
   /**
-   * List all wallets (metadata only, no keys)
+   * List all wallets
    */
   listWallets(): WalletInfo[] {
-    return this.keystore.list().map((ks) => ({
-      id: ks.id,
-      name: ks.metadata.name,
-      publicKey: ks.address,
-      createdAt: ks.metadata.createdAt,
-      derivationIndex: ks.metadata.derivationIndex,
-      tags: ks.metadata.tags,
+    return Array.from(this.wallets.values()).map((w) => ({
+      id: w.id,
+      name: w.name,
+      publicKey: w.publicKey,
+      createdAt: w.createdAt,
+      tags: w.tags,
     }))
   }
 
   /**
-   * Get a single wallet's info
+   * Get a single wallet's metadata
    */
   getWallet(walletId: string): WalletInfo | null {
-    const ks = this.keystore.get(walletId)
-    if (!ks) return null
+    const w = this.wallets.get(walletId)
+    if (!w) return null
     return {
-      id: ks.id,
-      name: ks.metadata.name,
-      publicKey: ks.address,
-      createdAt: ks.metadata.createdAt,
-      derivationIndex: ks.metadata.derivationIndex,
-      tags: ks.metadata.tags,
+      id: w.id,
+      name: w.name,
+      publicKey: w.publicKey,
+      createdAt: w.createdAt,
+      tags: w.tags,
     }
   }
 
-  /**
-   * Find a wallet by name
-   */
   findWalletByName(name: string): WalletInfo | null {
-    const wallets = this.listWallets()
-    return wallets.find((w) => w.name === name) || null
+    return this.listWallets().find((w) => w.name === name) || null
   }
 
-  /**
-   * Delete a wallet
-   */
   deleteWallet(walletId: string): boolean {
-    return this.keystore.delete(walletId)
+    const deleted = this.wallets.delete(walletId)
+    if (deleted) this.saveMetadata()
+    return deleted
   }
 
   // ========== Balance Tracking ==========

@@ -13,6 +13,7 @@ import { StakingAdapter } from '../protocols/staking'
 import { TokenLauncherAdapter } from '../protocols/token-launcher'
 import { WrappedSolAdapter } from '../protocols/wrapped-sol'
 import { TelegramService } from './telegram'
+import { WhatsAppService } from './whatsapp'
 
 // ============================================
 // REST API Server
@@ -34,6 +35,7 @@ export class ApiServer {
   private apiKeys: Map<string, ApiKeyRecord> = new Map()
   private apiSecret: string
   private telegramService?: TelegramService
+  private whatsAppService: WhatsAppService
 
   constructor(
     walletManager: WalletManager,
@@ -60,6 +62,8 @@ export class ApiServer {
         orchestrator,
       )
     }
+
+    this.whatsAppService = new WhatsAppService(orchestrator)
 
     this.app = express()
     this.setupMiddleware()
@@ -90,6 +94,9 @@ export class ApiServer {
         agents: stats,
       })
     })
+
+    // ========== Integrations ==========
+    this.app.use('/api/v1/whatsapp', this.whatsAppService.getRouter())
 
     // ========== API Key Management ==========
     this.app.post('/api/v1/keys', this.adminAuth.bind(this), (req, res) => {

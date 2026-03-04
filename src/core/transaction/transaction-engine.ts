@@ -79,23 +79,31 @@ export class TransactionEngine {
       }
 
       // Build transaction
-      const keypair = await this.walletManager.getKeypair(walletId)
+      const signer = await this.walletManager.getSigner(walletId)
       const connection = getConnection()
       const toPubkey = new PublicKey(toAddress)
 
-      const transaction = new Transaction().add(
+      let transaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: keypair.publicKey,
+          fromPubkey: signer.publicKey,
           toPubkey,
           lamports: Math.round(amountSol * LAMPORTS_PER_SOL),
         }),
       )
 
+      transaction.recentBlockhash = (
+        await connection.getLatestBlockhash()
+      ).blockhash
+      transaction.feePayer = signer.publicKey
+
       // Sign and send
+      transaction.partialSign(signer)
+      await signer.signTransaction?.(transaction) // trigger turnkey
+
       const signature = await sendAndConfirmTransaction(
         connection,
         transaction,
-        [keypair],
+        [signer], // Signers array needs an explicit Signer proxy
       )
 
       // Record success
@@ -155,16 +163,16 @@ export class TransactionEngine {
         return record
       }
 
-      const keypair = await this.walletManager.getKeypair(walletId)
+      const signer = await this.walletManager.getSigner(walletId)
       const connection = getConnection()
       const mint = new PublicKey(mintAddress)
       const toPubkey = new PublicKey(toAddress)
 
       // Get or create associated token accounts
-      const fromATA = await getAssociatedTokenAddress(mint, keypair.publicKey)
+      const fromATA = await getAssociatedTokenAddress(mint, signer.publicKey)
       const toATA = await getAssociatedTokenAddress(mint, toPubkey)
 
-      const transaction = new Transaction()
+      let transaction = new Transaction()
 
       // Check if destination ATA exists, create if not
       try {
@@ -173,7 +181,7 @@ export class TransactionEngine {
         if (error instanceof TokenAccountNotFoundError) {
           transaction.add(
             createAssociatedTokenAccountInstruction(
-              keypair.publicKey,
+              signer.publicKey,
               toATA,
               toPubkey,
               mint,
@@ -187,13 +195,21 @@ export class TransactionEngine {
       // Add transfer instruction
       const rawAmount = BigInt(Math.round(amount * Math.pow(10, decimals)))
       transaction.add(
-        createTransferInstruction(fromATA, toATA, keypair.publicKey, rawAmount),
+        createTransferInstruction(fromATA, toATA, signer.publicKey, rawAmount),
       )
+
+      transaction.recentBlockhash = (
+        await connection.getLatestBlockhash()
+      ).blockhash
+      transaction.feePayer = signer.publicKey
+
+      transaction.partialSign(signer)
+      await signer.signTransaction?.(transaction) // trigger turnkey
 
       const signature = await sendAndConfirmTransaction(
         connection,
         transaction,
-        [keypair],
+        [signer],
       )
 
       record.status = 'confirmed'
@@ -244,13 +260,16 @@ export class TransactionEngine {
         return record
       }
 
-      const keypair = await this.walletManager.getKeypair(walletId)
+      const signer = await this.walletManager.getSigner(walletId)
       const connection = getConnection()
+
+      transaction.partialSign(signer)
+      await signer.signTransaction?.(transaction) // trigger turnkey
 
       const signature = await sendAndConfirmTransaction(
         connection,
         transaction,
-        [keypair],
+        [signer],
       )
 
       record.status = 'confirmed'

@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",
-    "cli": "tsx src/cli/index.ts"
+    "cli": "tsx src/cli/index.ts",
+    "migrate:turnkey": "tsx src/cli/migrate.ts"
   },
   "keywords": [
     "solana",
@@ -36,6 +37,8 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.0",
+    "@turnkey/api-key-stamper": "^0.6.2",
+    "@turnkey/http": "^3.17.0",
     "bip39": "^3.1.0",
     "bs58": "^6.0.0",
     "chalk": "^5.4.1",
@@ -48,12 +51,14 @@
     "ora": "^8.1.1",
     "telegraf": "^4.16.3",
     "tweetnacl": "^1.0.3",
+    "twilio": "^5.12.2",
     "uuid": "^11.0.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "@types/twilio": "^3.19.2",
     "@types/uuid": "^10.0.0",
     "eslint": "^9.0.0",
     "tsx": "^4.19.0",

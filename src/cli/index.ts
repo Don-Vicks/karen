@@ -212,12 +212,14 @@ wallet
   .command('mnemonic')
   .description('Generate a new master mnemonic for HD wallet derivation')
   .action(() => {
-    const mnemonic = WalletManager.generateMnemonic()
-    console.log(chalk.bold('\n🔑 New Master Mnemonic (24 words):\n'))
-    console.log(chalk.yellow(`   ${mnemonic}`))
     console.log(
       chalk.red(
-        '\n   ⚠️  Store this securely! Anyone with this can derive all agent wallets.\n',
+        '\n  ❌ Error: HD Wallets are not supported with Turnkey integration',
+      ),
+    )
+    console.log(
+      chalk.red(
+        '  Please create a standard wallet using: npx karen wallet create <name>\n',
       ),
     )
   })

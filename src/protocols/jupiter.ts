@@ -161,9 +161,9 @@ export class JupiterAdapter {
       slippageBps,
     )
 
-    // 2. Get wallet keypair
-    const keypair = await walletManager.getKeypair(walletId)
-    const publicKeyStr = keypair.publicKey.toBase58()
+    // 2. Get wallet signer
+    const signer = await walletManager.getSigner(walletId)
+    const publicKeyStr = signer.publicKey.toBase58()
 
     // 3. Build swap transaction
     const { transaction: txBuf, lastValidBlockHeight } =
@@ -172,7 +172,7 @@ export class JupiterAdapter {
     // 4. Deserialize and sign
     const connection = getConnection()
     const versionedTx = VersionedTransaction.deserialize(txBuf)
-    versionedTx.sign([keypair])
+    await signer.signTransaction?.(versionedTx)
 
     // 5. Send and confirm
     const signature = await connection.sendRawTransaction(

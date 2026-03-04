@@ -135,7 +135,7 @@ export class SplTokenAdapter {
     amount: number,
   ): Promise<{ signature: string; burned: number }> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
 
     const ata = await getAssociatedTokenAddress(mint, payer.publicKey)
@@ -152,7 +152,9 @@ export class SplTokenAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -172,7 +174,7 @@ export class SplTokenAdapter {
     mintAddress: string,
   ): Promise<{ signature: string; rentReclaimed: number }> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
 
     const ata = await getAssociatedTokenAddress(mint, payer.publicKey)
@@ -202,7 +204,9 @@ export class SplTokenAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -226,7 +230,7 @@ export class SplTokenAdapter {
     mintAddress: string,
   ): Promise<string> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
     const owner = new PublicKey(targetOwner)
 
@@ -246,7 +250,9 @@ export class SplTokenAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -267,7 +273,7 @@ export class SplTokenAdapter {
     mintAddress: string,
   ): Promise<string> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
     const owner = new PublicKey(targetOwner)
 
@@ -287,7 +293,9 @@ export class SplTokenAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,

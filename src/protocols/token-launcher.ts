@@ -47,7 +47,7 @@ export class TokenLauncherAdapter {
     initialSupply: number = 1_000_000,
   ): Promise<TokenLaunchResult> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mintKeypair = Keypair.generate()
 
     // Calculate rent exemption for mint account
@@ -109,7 +109,9 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer, mintKeypair)
+    tx.partialSign(payer, mintKeypair)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -139,7 +141,7 @@ export class TokenLauncherAdapter {
     decimals: number = 9,
   ): Promise<MintResult> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
 
     // Get or create the ATA for the payer
@@ -176,7 +178,9 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -196,7 +200,7 @@ export class TokenLauncherAdapter {
     mintAddress: string,
   ): Promise<string> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
 
     const tx = new Transaction().add(
@@ -214,7 +218,9 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,
@@ -234,7 +240,7 @@ export class TokenLauncherAdapter {
     mintAddress: string,
   ): Promise<string> {
     const connection = getConnection()
-    const payer = await walletManager.getKeypair(walletId)
+    const payer = await walletManager.getSigner(walletId)
     const mint = new PublicKey(mintAddress)
 
     const tx = new Transaction().add(
@@ -252,7 +258,9 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.sign(payer)
+    tx.partialSign(payer)
+    await payer.signTransaction?.(tx)
+
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
       signature,

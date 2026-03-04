@@ -149,12 +149,41 @@ export class AgentRuntime {
       },
     ]
 
-    const response = await this.getLlm().chat(
+    const tools = this.skills.getToolDefinitions()
+    let response = await this.getLlm().chat(
       messages,
-      this.skills.getToolDefinitions(),
+      tools,
       this.config.llmModel,
     )
-    return response.content
+
+    // If the LLM decided to execute a skill based on the chat (e.g., Airdrop)
+    if (response.toolCalls && response.toolCalls.length > 0) {
+      const action = response.toolCalls[0]
+      try {
+        const outcome = await this.act(action)
+
+        // Feed the tool result back into the chat so the LLM can summarize it
+        messages.push({
+          role: 'assistant',
+          content: response.content || `Executing ${action.skill}...`,
+        })
+        messages.push({
+          role: 'user',
+          content: `SKILL EXECUTION RESULT:\n${outcome}\n\nPlease summarize this result for the user.`,
+        })
+
+        // Ask the LLM one more time to generate the final text reply
+        response = await this.getLlm().chat(
+          messages,
+          tools,
+          this.config.llmModel,
+        )
+      } catch (error: any) {
+        return `❌ Agent failed to execute ${action.skill}: ${error.message}`
+      }
+    }
+
+    return response.content || 'No response generated.'
   }
 
   // ========== Core Loop ==========
