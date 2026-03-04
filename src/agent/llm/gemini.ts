@@ -60,12 +60,44 @@ export class GeminiProvider implements LLMProvider {
     const geminiTools =
       functionDeclarations.length > 0 ? [{ functionDeclarations }] : undefined
 
+    const systemMessage = messages.find((m) => m.role === 'system')
+    const chatMessages = messages.filter((m) => m.role !== 'system')
+
     // Convert messages to Gemini syntax
-    const geminiMessages = messages.map((m) => {
-      // Gemini roles are 'user', 'user', 'model', or 'system' - but system is a distinct parameter in v1
+    const geminiMessages = chatMessages.map((m) => {
+      // Handle native tool call responses injected by our AgentRuntime
+      if (m.role === 'tool_result' && m.toolName) {
+        return {
+          role: 'user', // Gemini expects functionResponses from the 'user' side
+          parts: [
+            {
+              functionResponse: {
+                name: m.toolName,
+                response: { result: m.content },
+              },
+            },
+          ],
+        }
+      }
+
+      if (m.role === 'tool_call' && m.toolName) {
+        return {
+          role: 'model', // Tool calls always originate from the model
+          parts: [
+            {
+              functionCall: {
+                name: m.toolName,
+                args: typeof m.content === 'object' ? m.content : {},
+              },
+            },
+          ],
+        }
+      }
+
+      // Standard text messages
       return {
-        role: m.role === 'assistant' ? 'model' : 'user', // Map everything to user or model
-        parts: [{ text: m.content }],
+        role: m.role === 'assistant' ? 'model' : 'user', // Map text chats to user or model
+        parts: [{ text: String(m.content) }],
       }
     })
 
@@ -74,6 +106,7 @@ export class GeminiProvider implements LLMProvider {
       contents: geminiMessages,
       config: {
         tools: geminiTools,
+        systemInstruction: systemMessage?.content,
       },
     })
 

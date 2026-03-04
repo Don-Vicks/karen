@@ -9,8 +9,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/cli/index.ts",
-    "start": "node dist/cli/index.ts",
+    "dev": "export NODE_OPTIONS=--dns-result-order=ipv4first && tsx watch src/cli/index.ts server start",
+    "start": "export NODE_OPTIONS=--dns-result-order=ipv4first && node dist/cli/index.ts server start",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src/",

@@ -88,7 +88,15 @@ export class TelegramService {
     })
 
     // Enable graceful stop
-    process.once('SIGINT', () => this.bot.stop('SIGINT'))
-    process.once('SIGTERM', () => this.bot.stop('SIGTERM'))
+    process.once('SIGINT', () => {
+      try {
+        this.bot.stop('SIGINT')
+      } catch (e) {}
+    })
+    process.once('SIGTERM', () => {
+      try {
+        this.bot.stop('SIGTERM')
+      } catch (e) {}
+    })
   }
 }

@@ -1,86 +1,11 @@
 [
   {
-    "id": "c3dcdad4-0127-4516-a815-924307095223",
-    "name": "TestTrader",
-    "walletId": "36c3b75b-3c63-44be-ba8f-90a5c9403478",
-    "llmProvider": "openai",
-    "llmModel": "gpt-4o",
-    "strategy": "Buy SOL",
-    "guardrails": {
-      "maxSolPerTransaction": 2,
-      "maxTransactionsPerMinute": 5,
-      "dailySpendingLimitSol": 10,
-      "allowedPrograms": [
-        "11111111111111111111111111111111",
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
-        "Stake11111111111111111111111111111111111111",
-        "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-      ],
-      "blockedAddresses": []
-    },
-    "loopIntervalMs": 30000,
-    "status": "idle",
-    "createdAt": "2026-02-24T17:23:50.506Z"
-  },
-  {
-    "id": "8eff5950-4e7e-4e68-84da-adea921791b9",
-    "name": "Trader",
-    "walletId": "f8d11585-68d5-4724-b003-45551c5de43d",
-    "llmProvider": "gemini",
-    "llmModel": "gpt-4o",
-    "strategy": "DCA into SOL",
-    "guardrails": {
-      "maxSolPerTransaction": 2,
-      "maxTransactionsPerMinute": 5,
-      "dailySpendingLimitSol": 10,
-      "allowedPrograms": [
-        "11111111111111111111111111111111",
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
-        "Stake11111111111111111111111111111111111111",
-        "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-      ],
-      "blockedAddresses": []
-    },
-    "loopIntervalMs": 30000,
-    "status": "idle",
-    "createdAt": "2026-03-02T11:34:19.251Z"
-  },
-  {
-    "id": "c485616b-49b2-4c2f-8f05-87e5d3014e64",
-    "name": "TestGemini",
-    "walletId": "8aa44e64-d741-4ec0-b62f-453a385f08ac",
-    "llmProvider": "gemini",
-    "llmModel": "gpt-4o",
-    "strategy": "Say hi",
-    "guardrails": {
-      "maxSolPerTransaction": 2,
-      "maxTransactionsPerMinute": 5,
-      "dailySpendingLimitSol": 10,
-      "allowedPrograms": [
-        "11111111111111111111111111111111",
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
-        "Stake11111111111111111111111111111111111111",
-        "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-      ],
-      "blockedAddresses": []
-    },
-    "loopIntervalMs": 30000,
-    "status": "idle",
-    "createdAt": "2026-03-02T15:53:19.106Z"
-  },
-  {
-    "id": "1796705c-4de2-4916-838c-923b22ec4861",
-    "name": "TestRunner",
-    "walletId": "6e4719e7-372a-42b4-9fc6-b4613287984a",
+    "id": "fed431af-999e-4d03-b4b8-5322006df372",
+    "name": "Turnkey Bot",
+    "walletId": "9531c50f-934a-4d3e-81bb-9f8bb2fdfcb4",
     "llmProvider": "gemini",
     "llmModel": "gemini-2.0-flash",
-    "strategy": "Say hello",
+    "strategy": "Listen to my commands and act autonomously on Devnet",
     "guardrails": {
       "maxSolPerTransaction": 2,
       "maxTransactionsPerMinute": 5,
@@ -97,31 +22,6 @@
     },
     "loopIntervalMs": 30000,
     "status": "idle",
-    "createdAt": "2026-03-02T15:56:52.489Z"
-  },
-  {
-    "id": "1abe95d0-92b8-49bf-8e4a-583a0be4e136",
-    "name": "Trader2",
-    "walletId": "9acb93ec-d831-499f-aa53-d9ff7be1519f",
-    "llmProvider": "gemini",
-    "llmModel": "gemini-2.0-flash",
-    "strategy": "DCA into SOL",
-    "guardrails": {
-      "maxSolPerTransaction": 2,
-      "maxTransactionsPerMinute": 5,
-      "dailySpendingLimitSol": 10,
-      "allowedPrograms": [
-        "11111111111111111111111111111111",
-        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-        "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
-        "Stake11111111111111111111111111111111111111",
-        "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
-      ],
-      "blockedAddresses": []
-    },
-    "loopIntervalMs": 30000,
-    "status": "idle",
-    "createdAt": "2026-03-02T16:02:03.306Z"
+    "createdAt": "2026-03-04T17:58:13.579Z"
   }
 ]

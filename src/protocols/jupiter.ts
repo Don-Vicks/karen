@@ -1,6 +1,9 @@
 import { VersionedTransaction } from '@solana/web3.js'
+import dns from 'dns'
 import { getConnection } from '../core/solana/connection'
 import { WalletManager } from '../core/wallet/wallet-manager'
+
+dns.setDefaultResultOrder('ipv4first')
 
 // ============================================
 // Jupiter Swap Adapter

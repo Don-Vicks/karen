@@ -6,8 +6,9 @@ import { SkillInvocation } from '../../core/types'
 // Unified abstraction for OpenAI and Anthropic
 
 export interface LLMMessage {
-  role: 'system' | 'user' | 'assistant'
-  content: string
+  role: 'system' | 'user' | 'assistant' | 'tool_call' | 'tool_result'
+  content: string | Record<string, any>
+  toolName?: string
 }
 
 export interface LLMToolDefinition {

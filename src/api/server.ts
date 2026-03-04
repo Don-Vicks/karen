@@ -1,4 +1,5 @@
 import cors from 'cors'
+import dns from 'dns'
 import express, { NextFunction, Request, Response } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { Orchestrator } from '../agent/orchestrator'
@@ -14,6 +15,9 @@ import { TokenLauncherAdapter } from '../protocols/token-launcher'
 import { WrappedSolAdapter } from '../protocols/wrapped-sol'
 import { TelegramService } from './telegram'
 import { WhatsAppService } from './whatsapp'
+
+// Workaround for Node.js ENOTFOUND issues on macOS where IPv6 resolves before IPv4
+dns.setDefaultResultOrder('ipv4first')
 
 // ============================================
 // REST API Server

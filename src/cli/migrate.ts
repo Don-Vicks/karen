@@ -2,6 +2,7 @@ import { ApiKeyStamper } from '@turnkey/api-key-stamper'
 import { TurnkeyClient, createActivityPoller } from '@turnkey/http'
 import chalk from 'chalk'
 import { Command } from 'commander'
+import dns from 'dns'
 import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
@@ -9,6 +10,9 @@ import readline from 'readline'
 import { v4 as uuidv4 } from 'uuid'
 import { Keystore } from '../core/wallet/keystore'
 import { WalletMetadata } from '../core/wallet/wallet-manager'
+
+// Workaround for Node.js ENOTFOUND issues on macOS where IPv6 resolves before IPv4
+dns.setDefaultResultOrder('ipv4first')
 
 dotenv.config()
 
@@ -65,11 +69,16 @@ async function migrate() {
     return
   }
 
+  // Turnkey requires keys to be base64url encoded
+  const encodeKey = (hex: string) =>
+    Buffer.from(hex, 'hex').toString('base64url')
+
   const stamper = new ApiKeyStamper({
-    apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY,
-    apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY,
+    apiPublicKey: encodeKey(process.env.TURNKEY_API_PUBLIC_KEY),
+    apiPrivateKey: encodeKey(process.env.TURNKEY_API_PRIVATE_KEY),
   })
 
+  // Setup fetch proxy globally if Node 18 fetch is misinterpreting the turnkey endpoint
   const turnkey = new TurnkeyClient(
     { baseUrl: 'https://api.turnkey.com' },
     stamper,

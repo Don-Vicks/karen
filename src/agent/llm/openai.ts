@@ -37,13 +37,31 @@ export class OpenAIProvider implements LLMProvider {
         },
       }),
     )
+    const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map(
+      (m) => {
+        if (m.role === 'tool_call') {
+          return {
+            role: 'assistant',
+            content: `Executing ${m.toolName}...`,
+          }
+        }
+        if (m.role === 'tool_result') {
+          return {
+            role: 'user',
+            content: `SKILL EXECUTION RESULT:\n${JSON.stringify(m.content)}\n\nPlease summarize this result or execute the next logical step.`,
+          }
+        }
+
+        return {
+          role: m.role as 'system' | 'user' | 'assistant',
+          content: String(m.content),
+        }
+      },
+    )
 
     const response = await this.client.chat.completions.create({
       model,
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: oaiMessages,
       tools: openaiTools.length > 0 ? openaiTools : undefined,
       tool_choice: openaiTools.length > 0 ? 'auto' : undefined,
     })

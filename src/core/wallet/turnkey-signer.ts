@@ -54,7 +54,7 @@ export class TurnkeySigner implements Signer {
         signWith: this.walletAccountAddress,
         payload,
         encoding: 'PAYLOAD_ENCODING_HEXADECIMAL',
-        hashFunction: 'HASH_FUNCTION_NO_OP', // Solana signs the raw message directly
+        hashFunction: 'HASH_FUNCTION_NOT_APPLICABLE', // Solana signs the raw message directly
       },
       timestampMs: String(Date.now()),
     })

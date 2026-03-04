@@ -156,31 +156,52 @@ export class AgentRuntime {
       this.config.llmModel,
     )
 
-    // If the LLM decided to execute a skill based on the chat (e.g., Airdrop)
-    if (response.toolCalls && response.toolCalls.length > 0) {
+    // If the LLM decided to execute skills based on the chat (e.g., Airdrop then Transfer)
+    let loopCount = 0
+    const maxLoops = 5
+
+    while (
+      response.toolCalls &&
+      response.toolCalls.length > 0 &&
+      loopCount < maxLoops
+    ) {
+      loopCount++
       const action = response.toolCalls[0]
+      let outcome: string
       try {
-        const outcome = await this.act(action)
+        outcome = await this.act(action)
+      } catch (error: any) {
+        return `❌ Agent failed to execute ${action.skill}: ${error.message}`
+      }
 
-        // Feed the tool result back into the chat so the LLM can summarize it
-        messages.push({
-          role: 'assistant',
-          content: response.content || `Executing ${action.skill}...`,
-        })
-        messages.push({
-          role: 'user',
-          content: `SKILL EXECUTION RESULT:\n${outcome}\n\nPlease summarize this result for the user.`,
-        })
+      // Feed the tool invocation context back to the chat
+      messages.push({
+        role: 'tool_call',
+        content: action.params,
+        toolName: action.skill,
+      })
 
-        // Ask the LLM one more time to generate the final text reply
+      // Feed the execution result back to the chat natively
+      messages.push({
+        role: 'tool_result',
+        content: outcome,
+        toolName: action.skill,
+      })
+
+      // Ask the LLM one more time
+      try {
         response = await this.getLlm().chat(
           messages,
           tools,
           this.config.llmModel,
         )
       } catch (error: any) {
-        return `❌ Agent failed to execute ${action.skill}: ${error.message}`
+        return `✅ Action executed successfully:\n\n${outcome}\n\n⚠️ However, the agent ran out of API resources while trying to write a response: ${error.message}`
       }
+    }
+
+    if (loopCount >= maxLoops) {
+      return `⚠️ Agent reached maximum tool execution limit.\n\n${response.content}`
     }
 
     return response.content || 'No response generated.'

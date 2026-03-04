@@ -28,12 +28,27 @@ export class AnthropicProvider implements LLMProvider {
   ): Promise<LLMResponse> {
     // Separate system message from conversation
     const systemMsg = messages.find((m) => m.role === 'system')
-    const conversationMsgs = messages
+    const conversationMsgs: Anthropic.MessageParam[] = messages
       .filter((m) => m.role !== 'system')
-      .map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
+      .map((m) => {
+        if (m.role === 'tool_call') {
+          return {
+            role: 'assistant',
+            content: `Executing ${m.toolName}...`,
+          }
+        }
+        if (m.role === 'tool_result') {
+          return {
+            role: 'user',
+            content: `SKILL EXECUTION RESULT:\n${JSON.stringify(m.content)}\n\nPlease summarize this result or execute the next logical step.`,
+          }
+        }
+
+        return {
+          role: m.role as 'user' | 'assistant',
+          content: String(m.content),
+        }
+      })
 
     // Convert tools to Anthropic format
     const anthropicTools: Anthropic.Tool[] = tools.map((t) => ({
@@ -45,7 +60,7 @@ export class AnthropicProvider implements LLMProvider {
     const response = await this.client.messages.create({
       model,
       max_tokens: 1024,
-      system: systemMsg?.content || '',
+      system: systemMsg ? String(systemMsg.content) : '',
       messages: conversationMsgs,
       tools: anthropicTools.length > 0 ? anthropicTools : undefined,
     })

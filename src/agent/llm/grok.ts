@@ -26,8 +26,31 @@ export class GrokProvider implements LLMProvider {
   async chat(
     messages: LLMMessage[],
     tools: LLMToolDefinition[],
-    model: string = process.env.GROK_MODEL || 'grok-3-latest',
+    model: string = 'grok-2',
   ): Promise<LLMResponse> {
+    const oaiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = messages.map(
+      (m) => {
+        // Map tool executions back to text since Grok/OpenAI relies on prompt structure for simple integrations
+        if (m.role === 'tool_call') {
+          return {
+            role: 'assistant',
+            content: `Executing ${m.toolName}...`,
+          }
+        }
+        if (m.role === 'tool_result') {
+          return {
+            role: 'user',
+            content: `SKILL EXECUTION RESULT:\n${JSON.stringify(m.content)}\n\nPlease summarize this result or execute the next logical step.`,
+          }
+        }
+
+        return {
+          role: m.role as 'system' | 'user' | 'assistant',
+          content: String(m.content),
+        }
+      },
+    )
+
     const openaiTools: OpenAI.Chat.Completions.ChatCompletionTool[] = tools.map(
       (t) => ({
         type: 'function' as const,
@@ -41,10 +64,7 @@ export class GrokProvider implements LLMProvider {
 
     const response = await this.client.chat.completions.create({
       model,
-      messages: messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: oaiMessages,
       tools: openaiTools.length > 0 ? openaiTools : undefined,
       tool_choice: openaiTools.length > 0 ? 'auto' : undefined,
     })

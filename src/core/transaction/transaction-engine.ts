@@ -6,9 +6,9 @@ import {
   TokenAccountNotFoundError,
 } from '@solana/spl-token'
 import {
+  Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
-  sendAndConfirmTransaction,
   SystemProgram,
   Transaction,
 } from '@solana/web3.js'
@@ -97,13 +97,10 @@ export class TransactionEngine {
       transaction.feePayer = signer.publicKey
 
       // Sign and send
-      transaction.partialSign(signer)
-      await signer.signTransaction?.(transaction) // trigger turnkey
-
-      const signature = await sendAndConfirmTransaction(
+      const signature = await this.executeTransaction(
         connection,
         transaction,
-        [signer], // Signers array needs an explicit Signer proxy
+        signer,
       )
 
       // Record success
@@ -203,13 +200,10 @@ export class TransactionEngine {
       ).blockhash
       transaction.feePayer = signer.publicKey
 
-      transaction.partialSign(signer)
-      await signer.signTransaction?.(transaction) // trigger turnkey
-
-      const signature = await sendAndConfirmTransaction(
+      const signature = await this.executeTransaction(
         connection,
         transaction,
-        [signer],
+        signer,
       )
 
       record.status = 'confirmed'
@@ -263,13 +257,10 @@ export class TransactionEngine {
       const signer = await this.walletManager.getSigner(walletId)
       const connection = getConnection()
 
-      transaction.partialSign(signer)
-      await signer.signTransaction?.(transaction) // trigger turnkey
-
-      const signature = await sendAndConfirmTransaction(
+      const signature = await this.executeTransaction(
         connection,
         transaction,
-        [signer],
+        signer,
       )
 
       record.status = 'confirmed'
@@ -330,6 +321,54 @@ export class TransactionEngine {
     limit?: number,
   ): TransactionRecord[] {
     return this.logger.getTransactions(walletId, limit)
+  }
+
+  // ========== Execution Helper ==========
+
+  private async executeTransaction(
+    connection: Connection,
+    transaction: Transaction,
+    signer: any,
+  ): Promise<string> {
+    if (!transaction.recentBlockhash) {
+      const latest = await connection.getLatestBlockhash('confirmed')
+      transaction.recentBlockhash = latest.blockhash
+    }
+    if (!transaction.feePayer) {
+      transaction.feePayer = signer.publicKey
+    }
+
+    if (
+      'signMessage' in signer &&
+      typeof signer.signMessage === 'function' &&
+      (!signer.secretKey || signer.secretKey.length === 0)
+    ) {
+      // Turnkey enclave signer (non-custodial)
+      const message = transaction.serializeMessage()
+      const signatureBytes = await signer.signMessage(message)
+      transaction.addSignature(signer.publicKey, Buffer.from(signatureBytes))
+    } else {
+      // Standard local Keystore signer
+      transaction.sign(signer)
+    }
+
+    const rawTransaction = transaction.serialize()
+    const signature = await connection.sendRawTransaction(rawTransaction, {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    })
+
+    const latestBlockhash = await connection.getLatestBlockhash('confirmed')
+    await connection.confirmTransaction(
+      {
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+      },
+      'confirmed',
+    )
+
+    return signature
   }
 
   // ========== Helpers ==========
