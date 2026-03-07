@@ -196,12 +196,24 @@ export class Orchestrator {
   }
 
   /**
+   * Get chat history
+   */
+  getChatHistory(agentId: string): any[] {
+    return this.memory.getChatMessages(agentId)
+  }
+
+  /**
    * Chat with an agent
    */
   async chatWithAgent(agentId: string, message: string): Promise<string> {
     const runtime = this.agents.get(agentId)
     if (!runtime) throw new Error(`Agent not found: ${agentId}`)
-    return runtime.chat(message)
+
+    this.memory.addChatMessage(agentId, 'user', message)
+    const response = await runtime.chat(message)
+    this.memory.addChatMessage(agentId, 'agent', response)
+
+    return response
   }
 
   /**

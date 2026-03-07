@@ -38,6 +38,17 @@ export default function AgentsPage() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
+  // Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [availableWallets, setAvailableWallets] = useState<{ id: string; name: string }[]>([]);
+
+  // Form State
+  const [newAgentName, setNewAgentName] = useState("");
+  const [newAgentProvider, setNewAgentProvider] = useState("openai");
+  const [newAgentWalletId, setNewAgentWalletId] = useState("");
+  const [newAgentStrategy, setNewAgentStrategy] = useState("");
+
   useEffect(() => {
     loadAgents();
     const interval = setInterval(loadAgents, 5000);
@@ -50,6 +61,50 @@ export default function AgentsPage() {
       setAgents(data.agents || []);
     } catch { }
     setLoading(false);
+  }
+
+  async function loadWalletsForDropdown() {
+    try {
+      const data = await apiFetch("/api/v1/wallets");
+      if (data?.wallets) {
+        setAvailableWallets(data.wallets);
+        if (data.wallets.length > 0 && !newAgentWalletId) {
+          setNewAgentWalletId(data.wallets[0].id);
+        }
+      }
+    } catch { }
+  }
+
+  async function openCreateModal() {
+    await loadWalletsForDropdown();
+    setIsCreateModalOpen(true);
+  }
+
+  async function handleCreateAgent() {
+    if (!newAgentName.trim() || !newAgentStrategy.trim() || !newAgentWalletId) return;
+    setIsCreating(true);
+    try {
+      const res = await apiFetch("/api/v1/agents", {
+        method: "POST",
+        body: JSON.stringify({
+          name: newAgentName,
+          llmProvider: newAgentProvider,
+          walletId: newAgentWalletId,
+          strategy: newAgentStrategy,
+        }),
+      });
+      if (res && res.agent) {
+        setAgents((prev) => [...prev, res.agent]);
+        setIsCreateModalOpen(false);
+        // Reset form
+        setNewAgentName("");
+        setNewAgentStrategy("");
+        setNewAgentProvider("openai");
+      }
+    } catch {
+      alert("Failed to create agent");
+    }
+    setIsCreating(false);
   }
 
   async function handleStartStop(agent: Agent) {
@@ -92,11 +147,16 @@ export default function AgentsPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="section-title">Agents</h1>
-        <p className="section-subtitle">
-          Autonomous AI agents managing Solana wallets
-        </p>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 className="section-title">Agents</h1>
+          <p className="section-subtitle">
+            Autonomous AI agents managing Solana wallets
+          </p>
+        </div>
+        <button className="btn btn-primary" onClick={openCreateModal}>
+          + Deploy New Agent
+        </button>
       </div>
 
       {agents.length === 0 ? (
@@ -156,9 +216,21 @@ export default function AgentsPage() {
                       <button
                         className="btn btn-ghost"
                         style={{ padding: "6px 12px", fontSize: 12 }}
-                        onClick={() => {
-                          setChatAgentId(chatAgentId === agent.id ? null : agent.id);
-                          setChatMessages([]);
+                        onClick={async () => {
+                          if (chatAgentId === agent.id) {
+                            setChatAgentId(null);
+                          } else {
+                            setChatAgentId(agent.id);
+                            setChatMessages([]);
+                            setChatLoading(true);
+                            try {
+                              const data = await apiFetch(`/api/v1/agents/${agent.id}/chat/history`);
+                              if (data?.history) {
+                                setChatMessages(data.history.map((m: any) => ({ role: m.role, text: m.content })));
+                              }
+                            } catch { }
+                            setChatLoading(false);
+                          }
                         }}
                       >
                         💬 Chat
@@ -215,6 +287,90 @@ export default function AgentsPage() {
               />
               <button className="btn btn-primary" onClick={handleChat}>
                 Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deploy Agent Modal */}
+      {isCreateModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Deploy New Agent</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+                Instantiate a new autonomous AI engine.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Agent Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. DCA-Bot-01"
+                value={newAgentName}
+                onChange={(e) => setNewAgentName(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">AI Engine (LLM Provider)</label>
+              <select
+                className="form-select"
+                value={newAgentProvider}
+                onChange={(e) => setNewAgentProvider(e.target.value)}
+              >
+                <option value="openai">OpenAI (GPT-4o)</option>
+                <option value="anthropic">Anthropic (Claude-3.5-Sonnet)</option>
+                <option value="gemini">Google (Gemini Pro)</option>
+                <option value="grok">xAI (Grok)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Assigned Core Wallet</label>
+              <select
+                className="form-select"
+                value={newAgentWalletId}
+                onChange={(e) => setNewAgentWalletId(e.target.value)}
+              >
+                {availableWallets.length === 0 && <option disabled value="">No wallets found</option>}
+                {availableWallets.map(w => (
+                  <option key={w.id} value={w.id}>{w.name} ({w.id.slice(0, 8)}...)</option>
+                ))}
+              </select>
+              {availableWallets.length === 0 && (
+                <div style={{ fontSize: 12, color: "var(--status-error)", marginTop: 6 }}>
+                  You must create a Wallet first before deploying an Agent.
+                </div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Trading & Execution Strategy</label>
+              <textarea
+                className="form-textarea"
+                placeholder="e.g. You are a conservative trading bot. Every cycle, check the price of SOL. If SOL drops below $120, swap 10% of your USDC for SOL."
+                value={newAgentStrategy}
+                onChange={(e) => setNewAgentStrategy(e.target.value)}
+              />
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-ghost"
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleCreateAgent}
+                disabled={!newAgentName.trim() || !newAgentStrategy.trim() || !newAgentWalletId || isCreating}
+              >
+                {isCreating ? <span className="spinner"></span> : "Deploy Agent 🚀"}
               </button>
             </div>
           </div>

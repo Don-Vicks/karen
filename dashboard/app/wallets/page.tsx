@@ -40,6 +40,14 @@ export default function WalletsPage() {
   const [balances, setBalances] = useState<Record<string, Balance>>({});
   const [loading, setLoading] = useState(true);
 
+  // New Wallet Modal State
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newWalletName, setNewWalletName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Airdrop State
+  const [airdropStatus, setAirdropStatus] = useState<Record<string, "loading" | "success" | "error">>({});
+
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 10000);
@@ -63,6 +71,42 @@ export default function WalletsPage() {
     setLoading(false);
   }
 
+  async function handleCreateWallet() {
+    if (!newWalletName.trim()) return;
+    setIsCreating(true);
+    try {
+      const res = await apiFetch("/api/v1/wallets", {
+        method: "POST",
+        body: JSON.stringify({ name: newWalletName }),
+      });
+      if (res && res.wallet) {
+        setWallets((prev) => [...prev, res.wallet]);
+        setIsCreateModalOpen(false);
+        setNewWalletName("");
+        loadData(); // refresh balances
+      }
+    } catch {
+      alert("Failed to create wallet");
+    }
+    setIsCreating(false);
+  }
+
+  async function handleAirdrop(walletId: string) {
+    setAirdropStatus((prev) => ({ ...prev, [walletId]: "loading" }));
+    try {
+      const res = await apiFetch(`/api/v1/wallets/${walletId}/airdrop`, { method: "POST" });
+      if (res && res.signature) {
+        setAirdropStatus((prev) => ({ ...prev, [walletId]: "success" }));
+        setTimeout(() => setAirdropStatus((prev) => ({ ...prev, [walletId]: undefined as any })), 3000);
+        loadData(); // refresh balances
+      } else {
+        setAirdropStatus((prev) => ({ ...prev, [walletId]: "error" }));
+      }
+    } catch {
+      setAirdropStatus((prev) => ({ ...prev, [walletId]: "error" }));
+    }
+  }
+
   function copyAddress(address: string) {
     navigator.clipboard.writeText(address);
   }
@@ -78,11 +122,16 @@ export default function WalletsPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="section-title">Wallets</h1>
-        <p className="section-subtitle">
-          All managed wallets — internal agents and external API consumers
-        </p>
+      <div className="page-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h1 className="section-title">Wallets</h1>
+          <p className="section-subtitle">
+            All managed wallets — internal agents and external API consumers
+          </p>
+        </div>
+        <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
+          + Create Wallet
+        </button>
       </div>
 
       {wallets.length === 0 ? (
@@ -145,8 +194,18 @@ export default function WalletsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>SOL Balance</div>
-                    <div style={{ fontSize: 24, fontWeight: 700 }}>
-                      {bal ? bal.sol.toFixed(4) : "—"}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: 24, fontWeight: 700 }}>
+                        {bal ? bal.sol.toFixed(4) : "—"}
+                      </span>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ padding: "4px 8px", fontSize: "11px" }}
+                        onClick={() => handleAirdrop(w.id)}
+                        disabled={airdropStatus[w.id] === "loading"}
+                      >
+                        {airdropStatus[w.id] === "loading" ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 1 }} /> : "Airdrop 🪂"}
+                      </button>
                     </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
@@ -194,6 +253,53 @@ export default function WalletsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Create Wallet Modal */}
+      {isCreateModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Create Wallet</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
+                Provision a new secure Turnkey wallet enclave.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Wallet Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. trading-bot-primary"
+                value={newWalletName}
+                onChange={(e) => setNewWalletName(e.target.value)}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newWalletName.trim()) {
+                    handleCreateWallet();
+                  }
+                }}
+              />
+            </div>
+
+            <div className="modal-footer">
+              <button
+                className="btn btn-ghost"
+                onClick={() => setIsCreateModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleCreateWallet}
+                disabled={!newWalletName.trim() || isCreating}
+              >
+                {isCreating ? <span className="spinner"></span> : "Provision Wallet"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>

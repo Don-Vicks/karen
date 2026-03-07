@@ -41,6 +41,26 @@ export class MemoryStore {
   }
 
   /**
+   * Store a chat message
+   */
+  addChatMessage(agentId: string, role: string, content: string): void {
+    const messages = this.getChatMessages(agentId)
+    messages.push({ role, content, timestamp: new Date().toISOString() })
+    const trimmed = messages.slice(-200) // Keep last 200 chat messages
+    const filepath = path.join(this.memoryDir, `${agentId}.chat.json`)
+    fs.writeFileSync(filepath, JSON.stringify(trimmed, null, 2))
+  }
+
+  /**
+   * Get chat history
+   */
+  getChatMessages(agentId: string): any[] {
+    const filepath = path.join(this.memoryDir, `${agentId}.chat.json`)
+    if (!fs.existsSync(filepath)) return []
+    return JSON.parse(fs.readFileSync(filepath, 'utf-8'))
+  }
+
+  /**
    * Get recent memories for context injection
    */
   getMemories(agentId: string, limit?: number): MemoryEntry[] {

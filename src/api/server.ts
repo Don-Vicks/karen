@@ -318,6 +318,21 @@ export class ApiServer {
       },
     )
 
+    this.app.get(
+      '/api/v1/agents/:id/chat/history',
+      this.apiKeyAuth.bind(this),
+      (req, res) => {
+        try {
+          const history = this.orchestrator.getChatHistory(
+            String(req.params.id),
+          )
+          res.json({ history })
+        } catch (error: any) {
+          res.status(500).json({ error: error.message })
+        }
+      },
+    )
+
     this.app.post(
       '/api/v1/agents/:id/chat',
       this.apiKeyAuth.bind(this),

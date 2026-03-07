@@ -82,8 +82,19 @@ export class StakingAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer, stakeKeypair)
-    await payer.signTransaction?.(tx)
+    tx.partialSign(stakeKeypair)
+
+    if (
+      'signMessage' in payer &&
+      typeof (payer as any).signMessage === 'function' &&
+      (!payer.secretKey || payer.secretKey.length === 0)
+    ) {
+      const message = tx.serializeMessage()
+      const signatureBytes = await (payer as any).signMessage(message)
+      tx.addSignature(payer.publicKey, Buffer.from(signatureBytes))
+    } else {
+      tx.partialSign(payer)
+    }
 
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
@@ -125,8 +136,17 @@ export class StakingAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer)
-    await payer.signTransaction?.(tx)
+    if (
+      'signMessage' in payer &&
+      typeof (payer as any).signMessage === 'function' &&
+      (!payer.secretKey || payer.secretKey.length === 0)
+    ) {
+      const message = tx.serializeMessage()
+      const signatureBytes = await (payer as any).signMessage(message)
+      tx.addSignature(payer.publicKey, Buffer.from(signatureBytes))
+    } else {
+      tx.partialSign(payer)
+    }
 
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({
@@ -169,8 +189,17 @@ export class StakingAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer)
-    await payer.signTransaction?.(tx)
+    if (
+      'signMessage' in payer &&
+      typeof (payer as any).signMessage === 'function' &&
+      (!payer.secretKey || payer.secretKey.length === 0)
+    ) {
+      const message = tx.serializeMessage()
+      const signatureBytes = await (payer as any).signMessage(message)
+      tx.addSignature(payer.publicKey, Buffer.from(signatureBytes))
+    } else {
+      tx.partialSign(payer)
+    }
 
     const signature = await connection.sendRawTransaction(tx.serialize())
     await connection.confirmTransaction({

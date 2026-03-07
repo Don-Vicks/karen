@@ -174,12 +174,17 @@ export class AgentRuntime {
         return `❌ Agent failed to execute ${action.skill}: ${error.message}`
       }
 
-      // Feed the tool invocation context back to the chat
+      // Feed the tool invocation context back to the chat natively
       messages.push({
         role: 'tool_call',
         content: action.params,
         toolName: action.skill,
       })
+      this.memory.addChatMessage(
+        this.config.id,
+        'system',
+        `⚙️ Executing skill \`${action.skill}\` with params: \n\`\`\`json\n${JSON.stringify(action.params, null, 2)}\n\`\`\``,
+      )
 
       // Feed the execution result back to the chat natively
       messages.push({
@@ -187,6 +192,11 @@ export class AgentRuntime {
         content: outcome,
         toolName: action.skill,
       })
+      this.memory.addChatMessage(
+        this.config.id,
+        'system',
+        `✅ Result:\n\n${outcome}`,
+      )
 
       // Ask the LLM one more time
       try {

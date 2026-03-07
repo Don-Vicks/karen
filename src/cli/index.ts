@@ -28,7 +28,7 @@ ${chalk.cyan('║')}  ${chalk.gray('   for Solana AI Agents')}                  
 ${chalk.cyan('╚═══════════════════════════════════════════╝')}
 `
 
-function getServices() {
+export function getServices() {
   const password = process.env.KEYSTORE_PASSWORD || 'karen-dev'
   const logger = new AuditLogger()
   const guardrails = new Guardrails(undefined, logger)
@@ -53,6 +53,24 @@ program
   .name('karen')
   .description('Autonomous wallet infrastructure for Solana AI agents')
   .version('0.1.0')
+
+// ========== Interactive Commands ==========
+
+program
+  .command('onboard')
+  .description('Interactive setup wizard to configure APIs and secure enclaves')
+  .action(async () => {
+    const { runOnboarding } = await import('./onboard')
+    await runOnboarding()
+  })
+
+program
+  .command('chat')
+  .description('Launch the AI Assistant interactive terminal (OpenClaw mode)')
+  .action(async () => {
+    const { runChat } = await import('./chat')
+    await runChat()
+  })
 
 // ========== Wallet Commands ==========
 
@@ -724,14 +742,29 @@ server
     })
   })
 
-server
+// ========== MCP Commands ==========
+
+const mcp = program
   .command('mcp')
+  .description('Manage MCP server configurations')
+
+mcp
+  .command('start')
   .description('Start the MCP server (for external AI agents)')
   .action(async () => {
     const { startMCPServer } = await import('../mcp/server')
     await startMCPServer()
   })
 
+mcp
+  .command('install')
+  .description(
+    'Automatically inject the Karen MCP server into OpenClaw and Claude Desktop',
+  )
+  .action(async () => {
+    const { installMcp } = await import('./mcp-installer')
+    await installMcp()
+  })
 // ========== Transaction Commands ==========
 
 const tx = program.command('tx').description('View transaction history')
