@@ -1,199 +1,141 @@
-# ⚡ Karen
+# ⚡ Karen: Autonomous Agentic Wallet Infrastructure for Solana
 
-**Autonomous Wallet Infrastructure for Solana AI Agents**
+[![Solana](https://img.shields.io/badge/Solana-Devnet-green?style=flat-square)](https://solana.com/)
+[![License](https://img.shields.io/badge/License-MIT-blue.style=flat-square)](LICENSE)
 
-Karen is an open-source, OpenClaw-inspired agentic wallet runtime where AI agents autonomously manage Solana wallets, sign transactions, and interact with DeFi protocols. It also serves as **infrastructure** — any external AI agent can plug in via REST API or MCP.
+**Karen** is an open-source, OpenClaw-inspired agentic wallet runtime built specifically for AI agents on Solana. It solves the critical bottleneck of AI autonomy: giving agents secure, non-custodial wallets that they fully control to hold funds, execute trades, and interact with dApps without human intervention.
 
-## ✨ Features
+It is built specifically for the **Solana AI Agent Wallet Bounty**, demonstrating a production-grade prototype of autonomous transaction capabilities in a secure, sandboxed devnet environment.
 
-| Feature                 | Description                                                               |
-| ----------------------- | ------------------------------------------------------------------------- |
-| **Autonomous Agents**   | LLM-powered agents (OpenAI/Claude) that observe, think, act, and remember |
-| **Secure Wallets**      | AES-256-GCM encrypted keystores with HD derivation for multi-agent        |
-| **Token Launch**        | Create SPL tokens, mint supply, revoke authorities                        |
-| **DeFi Integration**    | Jupiter swaps, native SOL staking, wSOL wrap/unwrap on devnet             |
-| **Token Management**    | Burn tokens, close accounts (reclaim rent), freeze/thaw                   |
-| **Security Guardrails** | Per-agent spending limits, rate limiting, program allowlists              |
-| **REST API**            | External agents create wallets and trade via HTTP                         |
-| **MCP Server**          | Any MCP-compatible agent (Claude, OpenClaw) gets instant wallet skills    |
-| **Agent Skills**        | 17 pluggable skills — swap, transfer, stake, launch-token, burn, and more |
-| **Agent Memory**        | Persistent context so agents learn from past decisions                    |
-| **Dashboard**           | Premium Next.js UI for live monitoring                                    |
-| **CLI**                 | Full control from the terminal                                            |
+---
 
-## 🏗️ Architecture
+## 🎯 Bounty Requirements Complete
 
-```
-External Agents (OpenClaw, LangChain, etc.)
-          │
-    ┌─────┴─────┐
-    │ MCP Server │──── REST API
-    └─────┬─────┘
-          │
-    ┌─────┴──────────────┐
-    │    Agent Runtime    │
-    │ Observe→Think→Act  │
-    │    (LLM-powered)   │
-    └─────┬──────────────┘
-          │
-    ┌─────┴──────────────┐
-    │   Core Engine       │
-    │ Wallet Manager      │
-    │ Transaction Engine  │
-    │ Security Guardrails │
-    └─────┬──────────────┘
-          │
-    Solana Devnet RPC
-```
+This functional prototype fulfills all bounty requirements:
 
-## 🚀 Quick Start
+- ✅ **Programmatic Wallet Creation**: Dynamically provisions Solana Keypairs inside isolated **Turnkey Secure Enclaves**.
+- ✅ **Automatic Transaction Signing**: Non-custodial, payload-driven transaction signing (`executeTransaction` flow) without any manual user approval.
+- ✅ **Hold SOL & SPL Tokens**: Agents fully control their balances, wrap/unwrap SOL, and reclaim rent.
+- ✅ **dApp Interaction**: Natively integrated with Devnet Staking (delegating to validators) and SPL Token Launching.
+- ✅ **Skill Discovery**: Pluggable agent architecture with an exposed [`SKILLS.md`](./SKILLS.md) for agents to read.
+- ✅ **Clear Separation**: The LLM reasoning (Observation & Thinking) is completely decoupled from the Wallet Engine (Transaction Execution & Guardrails).
+
+---
+
+## 🏗️ Deep Dive: Architecture & Security
+
+### Secure Key Management (Turnkey)
+
+Traditional bots store private keys in `.env` files. Karen utilizes **Turnkey** to provision unexportable, non-custodial secure enclaves for each AI agent.
+When an agent decides to swap tokens, the backend sends a serialized payload to the Turnkey enclave, which signs the message cryptographically and returns the signature. The server **never** sees the underlying private key, enabling scalable infrastructure where 1000s of agents can safely hold capital.
+
+### Autonomous Decision Execution
+
+Karen features a built-in agent simulation loop: `Observe → Think → Act → Remember`.
+
+1. **Observe**: The agent reads its wallet balance and parses its prior 5 transaction receipts.
+2. **Think**: Instructed by a user-defined prompt (e.g., "DCA 1 SOL into USDC every cycle"), the LLM determines the optimal skill to invoke.
+3. **Act**: The agent passes structured JSON tools (`stake_sol`, `swap`) to the `TransactionEngine`.
+4. **Remember**: All actions and internal reasonings are written to a persistent `MemoryStore`, creating a continuous context window that survives server restarts.
+
+### Security Guardrails
+
+To prevent AI hallucinations from draining funds, all programmatic transactions must pass through the rigid `TransactionEngine` guardrails before signing:
+
+- **Max SOL Limits**: Agents are hard-capped per transaction and per day.
+- **Rate Limiting**: Prevent agents from spamming RPC nodes.
+- **Program Allowlists**: Only trusted, whitelisted Devnet programs are allowed to interact with the agent's signer.
+
+---
+
+## 🛠️ What You Can Build
+
+Karen functions as **headless infrastructure**.
+
+- **Autonomous Background Workers**: Run the built-in CLI loop to simulate a DCA trading bot, a liquidity provider, or an automated staking delegator.
+- **Multi-Agent Harness**: The core engine supports 1-to-N agents, where every newly spawned agent gets its own sandboxed Turnkey wallet and independent spending limit.
+- **External API & MCP Client**: Connect your local LangChain apps or OpenClaw assistants instantly via the Model Context Protocol (MCP) or standard HTTP REST APIs.
+
+---
+
+## 🚀 Quick Start (Devnet)
 
 ### Prerequisites
 
 - Node.js ≥ 20
-- OpenAI or Anthropic API key
+- OpenAI, Anthropic, Gemini, or xAI API key
+- Turnkey API Credentials (for secure enclaves)
 
-### Setup
+### 1. Setup
 
 ```bash
 git clone https://github.com/yourusername/agentic-wallet.git
 cd agentic-wallet
 npm install
 
-# Configure
-cp .env.example .env
-# Edit .env — add your OPENAI_API_KEY or ANTHROPIC_API_KEY
-
-# Build
+# Build the project
 npm run build
 ```
 
-### Create & Fund a Wallet
+### 2. Interactive Onboarding & Environment
+
+Use the built-in interactive wizard to setup your API keys and Turnkey credentials.
 
 ```bash
-npx tsx src/cli/index.ts wallet create --name "my-agent-wallet"
-npx tsx src/cli/index.ts wallet airdrop --name "my-agent-wallet" --amount 2
-npx tsx src/cli/index.ts wallet balance --name "my-agent-wallet"
+npx tsx src/cli/index.ts onboard
 ```
 
-### Create & Start an Agent
+### 3. Deploy an Autonomous Agent
+
+Create a new agent, specify its LLM engine, and give it an autonomous strategy:
 
 ```bash
 npx tsx src/cli/index.ts agent create \
-  --name "DCA-Bot" \
-  --strategy "Buy USDC with 0.5 SOL every cycle when balance > 1 SOL" \
+  --name "Devnet-Staker" \
+  --strategy "Every cycle, if you have > 2 SOL, stake 1 SOL to a devnet validator." \
   --llm openai
-
-npx tsx src/cli/index.ts agent start --name "DCA-Bot"
 ```
 
-### Start the API Server
+### 4. Start the Agent Loop
+
+Watch your agent autonomously fund itself via airdrops, sign transactions, and interact with the blockchain in real-time:
 
 ```bash
+npx tsx src/cli/index.ts agent start --name "Devnet-Staker"
+```
+
+---
+
+## 🖥️ Live Observation Dashboard
+
+Karen includes an optional, premium Front-end Next.js dashboard to monitor all agent decision-making, chat with active agents, and view chronological transaction logs.
+
+```bash
+# Start the Backend Server
 npx tsx src/cli/index.ts server start
-# API running at http://localhost:3001
-```
 
-### Launch the Dashboard
-
-```bash
+# Open the UI in a new terminal
 cd dashboard
 npm install
 npm run dev
 # Dashboard at http://localhost:3000
 ```
 
-### Use as MCP Server
-
-Add to your Claude Desktop or OpenClaw config:
-
-```json
-{
-  "mcpServers": {
-    "karen": {
-      "command": "npx",
-      "args": ["tsx", "/path/to/agentic-wallet/src/mcp/server.ts"]
-    }
-  }
-}
-```
-
 ## 📁 Project Structure
 
-```
+```text
 agentic-wallet/
 ├── src/
-│   ├── core/                 # Wallet, transactions, guardrails
-│   │   ├── wallet/           # Wallet creation, HD derivation, keystore
-│   │   ├── transaction/      # Transaction engine, guardrails
-│   │   └── solana/           # RPC connection
-│   ├── agent/                # LLM-powered agent runtime
-│   │   ├── llm/              # OpenAI + Anthropic providers
-│   │   ├── skills/           # Pluggable agent skills
-│   │   └── memory/           # Persistent agent memory
-│   ├── protocols/            # DeFi integration (Jupiter, SPL)
-│   ├── api/                  # REST API server
-│   ├── mcp/                  # MCP server
-│   └── cli/                  # CLI interface
-├── dashboard/                # Next.js monitoring dashboard
-├── SKILLS.md                 # Agent skill reference
-└── data/                     # Runtime data (keystores, logs, memory)
+│   ├── core/                 # Secure Wallet Enclaves, Guardrails, Transaction Routing
+│   ├── agent/                # LLM Run_Loop (Think->Act), MemoryStore, Tool/Skill definitions
+│   ├── protocols/            # DeFi integrations (Staking, Token Launch, Jupiter)
+│   ├── api/                  # REST API for external AI harnesses
+│   ├── mcp/                  # MCP server for local Claude/OpenClaw clients
+│   └── cli/                  # Interactive terminal interface
+├── dashboard/                # Next.js interactive Control Panel
+├── SKILLS.md                 # Agent readable tool definitions
+└── data/                     # Persistent JSON Memory and Audit Logs
 ```
-
-## 🔒 Security
-
-- **Encrypted keystores**: Private keys encrypted with AES-256-GCM, derived via scrypt
-- **HD derivation**: Each agent gets a deterministic wallet from a master seed (BIP-44)
-- **Spending limits**: Max SOL per transaction, daily caps, rate limiting
-- **Program allowlists**: Agents can only interact with approved Solana programs
-- **Audit logging**: Every transaction and decision is logged
-
-## 🤖 Supported LLMs
-
-| Provider  | Models                                   |
-| --------- | ---------------------------------------- |
-| OpenAI    | gpt-4o, gpt-4o-mini, gpt-3.5-turbo       |
-| Anthropic | claude-sonnet-4-20250514, claude-3-haiku |
-
-## 🔌 External Integration
-
-### REST API
-
-```bash
-# Create a wallet
-curl -X POST http://localhost:3001/api/v1/wallets \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "my-wallet"}'
-
-# Swap tokens
-curl -X POST http://localhost:3001/api/v1/wallets/{id}/swap \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"inputToken": "SOL", "outputToken": "USDC", "amount": 0.5}'
-```
-
-### MCP Tools
-
-| Tool                       | Description                   |
-| -------------------------- | ----------------------------- |
-| `karen_create_wallet`    | Provision a new Solana wallet |
-| `karen_balance`          | Check wallet balances         |
-| `karen_swap`             | Swap tokens via Jupiter       |
-| `karen_transfer`         | Send SOL or SPL tokens        |
-| `karen_airdrop`          | Request devnet SOL            |
-| `karen_tx_history`       | View transaction history      |
-| `karen_launch_token`     | Create a new SPL token        |
-| `karen_mint_supply`      | Mint additional tokens        |
-| `karen_revoke_authority` | Revoke mint/freeze authority  |
-| `karen_stake`            | Stake SOL to validator        |
-| `karen_unstake`          | Deactivate stake account      |
-| `karen_withdraw_stake`   | Withdraw deactivated stake    |
-| `karen_list_stakes`      | List stake accounts           |
-| `karen_burn`             | Burn SPL tokens               |
-| `karen_close_account`    | Close empty token account     |
-| `karen_wrap_sol`         | Wrap SOL to wSOL              |
-| `karen_unwrap_sol`       | Unwrap wSOL to SOL            |
 
 ## 📄 License
 

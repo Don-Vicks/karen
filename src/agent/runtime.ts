@@ -140,12 +140,13 @@ export class AgentRuntime {
   async chat(message: string): Promise<string> {
     const systemPrompt = this.buildSystemPrompt()
     const recentMemory = this.memory.formatForContext(this.config.id, 10)
+    const observations = await this.observe()
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
       {
         role: 'user',
-        content: `RECENT ACTIVITY:\n${recentMemory}\n\nUSER MESSAGE: ${message}`,
+        content: `CURRENT WALLET STATE:\n${JSON.stringify(observations, null, 2)}\n\nRECENT BACKGROUND ACTIVITY:\n${recentMemory}\n\nUSER MESSAGE: ${message}\n\n=== CHAT OVERRIDE ===\nRead the USER MESSAGE carefully.\n1. If the user is just saying hello, asking a question, or requesting information (e.g., "what can you do?", "how's it going?"): You MUST use the "wait" tool to reply conversationally. DO NOT execute any financial or blockchain tools.\n2. Only execute financial tools (airdrop, transfer, stake, etc.) if the user EXPLICITLY commands you to perform a specific action (e.g., "airdrop me 2 sol", "stake my funds").\n3. Answering the user's question takes absolute precedence over your background strategy.`,
       },
     ]
 
@@ -160,6 +161,26 @@ export class AgentRuntime {
     let loopCount = 0
     const maxLoops = 5
 
+    console.log(`\n💬 [${this.config.name}] Chat Request Received`)
+    console.log(
+      `   🔸 Reasoning : ${response.content ? response.content.replace(/\n/g, ' ').substring(0, 100) : 'No explicit reasoning provided.'}...`,
+    )
+
+    // Highlight what the LLM tried to do if it hallucinated code
+    if (!response.toolCalls || response.toolCalls.length === 0) {
+      if (
+        response.content.includes('\`\`\`python') ||
+        response.content.includes('\`\`\`javascript') ||
+        response.content.includes('\`\`\`json')
+      ) {
+        console.warn(
+          `⚠️ [${this.config.name}] LLM Hallucinated code blocks instead of using native tools in chat: \n${response.content.substring(0, 150)}...`,
+        )
+      } else {
+        console.log(`   ⏳ Action    : Conversational Reply`)
+      }
+    }
+
     while (
       response.toolCalls &&
       response.toolCalls.length > 0 &&
@@ -167,6 +188,11 @@ export class AgentRuntime {
     ) {
       loopCount++
       const action = response.toolCalls[0]
+
+      console.log(
+        `   ⚡ Action    : ${action.skill}(${JSON.stringify(action.params)})`,
+      )
+
       let outcome: string
       try {
         outcome = await this.act(action)
@@ -186,6 +212,10 @@ export class AgentRuntime {
         `⚙️ Executing skill \`${action.skill}\` with params: \n\`\`\`json\n${JSON.stringify(action.params, null, 2)}\n\`\`\``,
       )
 
+      console.log(
+        `   ✅ Outcome   : ${outcome.replace(/\n/g, ' ').substring(0, 100)}...`,
+      )
+
       // Feed the execution result back to the chat natively
       messages.push({
         role: 'tool_result',
@@ -198,20 +228,18 @@ export class AgentRuntime {
         `✅ Result:\n\n${outcome}`,
       )
 
-      // Ask the LLM one more time
+      // Ask the LLM one more time to summarize the result.
+      // We pass an empty tools array [] so it is physically forced to reply with text
+      // rather than getting distracted and firing another tool infinitely.
       try {
-        response = await this.getLlm().chat(
-          messages,
-          tools,
-          this.config.llmModel,
-        )
+        response = await this.getLlm().chat(messages, [], this.config.llmModel)
       } catch (error: any) {
         return `✅ Action executed successfully:\n\n${outcome}\n\n⚠️ However, the agent ran out of API resources while trying to write a response: ${error.message}`
       }
     }
 
     if (loopCount >= maxLoops) {
-      return `⚠️ Agent reached maximum tool execution limit.\n\n${response.content}`
+      return `⚠️ Agent reached maximum tool execution limit.\n\n${response.content || 'Please try again.'}`
     }
 
     return response.content || 'No response generated.'
@@ -224,12 +252,25 @@ export class AgentRuntime {
 
     try {
       await this.executeCycle()
+      // Auto-recover from transient errors
+      if (this.config.status === 'error') {
+        this.config.status = 'running'
+        this.logger.logEvent({
+          type: 'agent:recovered',
+          data: {
+            agentId: this.config.id,
+            message: 'Recovered from previous error',
+          },
+        })
+      }
     } catch (error: any) {
-      this.config.status = 'error'
-      this.logger.logEvent({
-        type: 'agent:error',
-        data: { agentId: this.config.id, error: error.message },
-      })
+      if (this.config.status !== 'error') {
+        this.config.status = 'error'
+        this.logger.logEvent({
+          type: 'agent:error',
+          data: { agentId: this.config.id, error: error.message },
+        })
+      }
     }
 
     // Schedule next cycle
@@ -280,6 +321,22 @@ export class AgentRuntime {
       outcome,
       timestamp: new Date().toISOString(),
     })
+
+    // Print to terminal for a cool visual demo
+    console.log(`\n🤖 [${this.config.name}] Cycle ${this.cycle} Executed`)
+    console.log(
+      `   🔸 Reasoning : ${reasoning.split('\n')[0].substring(0, 100)}...`,
+    )
+    if (action) {
+      console.log(
+        `   ⚡ Action    : ${action.skill}(${JSON.stringify(action.params)})`,
+      )
+      console.log(
+        `   ✅ Outcome   : ${outcome.split('\n')[0].substring(0, 100)}...`,
+      )
+    } else {
+      console.log(`   ⏳ Action    : Wait`)
+    }
   }
 
   // ========== Observe ==========
@@ -313,13 +370,11 @@ export class AgentRuntime {
           details: tx.details,
           timestamp: tx.timestamp,
         })),
-        cycle: this.cycle,
         timestamp: new Date().toISOString(),
       }
     } catch (error: any) {
       return {
         error: `Failed to observe: ${error.message}`,
-        cycle: this.cycle,
         timestamp: new Date().toISOString(),
       }
     }
@@ -335,7 +390,16 @@ export class AgentRuntime {
     const systemPrompt = this.buildSystemPrompt()
     const recentMemory = this.memory.formatForContext(this.config.id, 10)
 
-    const userMessage = `CURRENT STATE:\n${JSON.stringify(observations, null, 2)}\n\nRECENT MEMORY:\n${recentMemory}\n\nBased on your strategy and the current state, what would you like to do? Use one of your available skills or wait if no action is needed.`
+    const chatMsgs = this.memory.getChatMessages(this.config.id).slice(-5)
+    let chatContext = ''
+    if (chatMsgs.length > 0) {
+      chatContext =
+        `RECENT CHAT WITH USER:\n` +
+        chatMsgs.map((m: any) => `[${m.role}]: ${m.content}`).join('\n') +
+        `\n\n`
+    }
+
+    const userMessage = `CURRENT STATE:\n${JSON.stringify(observations, null, 2)}\n\nRECENT MEMORY:\n${recentMemory}\n\n${chatContext}Based on your strategy, the current state, and recent chat requests, what would you like to do? Use one of your available skills or wait if no action is needed.`
 
     const messages: LLMMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -396,15 +460,23 @@ YOUR CONSTRAINTS:
 YOUR BEHAVIOR:
 1. Analyze your current wallet state and recent activity
 2. Make a decision based on your strategy
-3. Use EXACTLY ONE skill per cycle, or "wait" if no action is needed
-4. Always provide clear reasoning for your decisions
-5. Be conservative — it's better to wait than make a bad trade
-6. Check your balance before making swaps or transfers
-7. If your SOL balance is low, consider requesting an airdrop
+3. Use EXACTLY ONE skill per action, or "wait" if no action is needed
+4. Check your balance before making swaps or transfers
+5. If your SOL balance is low, consider requesting an airdrop
+
+REASONING GUIDELINES:
+- You must write concise, professional execution logs that explain your plan clearly to the user.
+- State exactly what you have observed, what you plan to do, and why based on your strategy.
+- NEVER use technical jargon like "cycles", "loops", or "internal mechanics". The user does not know what this means.
+- Do NOT write in the first-person like a diary. Instead, write like a high-grade financial engine executing a strategy.
+- Example: "Previous airdrops failed. Current balance is 1.5 SOL. Based on the strategy, commencing a 0.5 SOL stake delegation."
+- You MUST provide your text reasoning BEFORE using a tool.
+- ENVIRONMENT LIMITATION: Do NOT write any Markdown code snippets, Python scripts, or JSON blocks in your text response.
+- Execute actions EXCLUSIVELY by invoking the registered function tools natively provided by the platform.
 
 IMPORTANT:
-- You must respond with a tool/function call to execute an action
-- Include your reasoning in the text response
-- Each cycle you can only perform ONE action`
+- Call exactly ONE tool/function per action to perform it. Do not attempt to write out the tool call manually in text.
+- Include your text reasoning in the response alongside the tool call.
+- You can only perform ONE action at a time`
   }
 }

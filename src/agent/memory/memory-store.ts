@@ -82,7 +82,9 @@ export class MemoryStore {
     return memories
       .map((m) => {
         const action = m.action || 'wait'
-        return `[Cycle ${m.cycle}] Action: ${action} | Reasoning: ${m.reasoning} | Outcome: ${m.outcome}`
+        // Cleanse the reasoning of any newline characters to keep logs single-line
+        const cleanReasoning = m.reasoning.replace(/\n/g, ' ').trim()
+        return `[LOG ${new Date(m.timestamp).toISOString()}]\nEXECUTED TOOL: ${action}\nINTENT: ${cleanReasoning}\nRESULT: ${m.outcome}\n`
       })
       .join('\n')
   }

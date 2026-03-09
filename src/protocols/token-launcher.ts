@@ -109,7 +109,9 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer, mintKeypair)
+    // Only partial sign with the local mintKeypair.
+    // The Turnkey Signer does not have a local secret key, so we delegate its signature to signTransaction.
+    tx.partialSign(mintKeypair)
     await payer.signTransaction?.(tx)
 
     const signature = await connection.sendRawTransaction(tx.serialize())
@@ -178,7 +180,6 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer)
     await payer.signTransaction?.(tx)
 
     const signature = await connection.sendRawTransaction(tx.serialize())
@@ -218,7 +219,6 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer)
     await payer.signTransaction?.(tx)
 
     const signature = await connection.sendRawTransaction(tx.serialize())
@@ -258,7 +258,6 @@ export class TokenLauncherAdapter {
     tx.lastValidBlockHeight = lastValidBlockHeight
     tx.feePayer = payer.publicKey
 
-    tx.partialSign(payer)
     await payer.signTransaction?.(tx)
 
     const signature = await connection.sendRawTransaction(tx.serialize())

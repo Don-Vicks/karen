@@ -111,20 +111,28 @@ export class GeminiProvider implements LLMProvider {
     })
 
     const toolCalls: SkillInvocation[] = []
+    let finalContent = ''
 
-    if (response.functionCalls && response.functionCalls.length > 0) {
-      for (const call of response.functionCalls) {
-        if (call.name) {
-          toolCalls.push({
-            skill: call.name,
-            params: (call.args as Record<string, unknown>) || {},
-          })
+    // Manually parse parts to avoid the SDK's concatenation warning when both text and functionCall exist
+    if (response.candidates && response.candidates.length > 0) {
+      const candidateItem = response.candidates[0]
+      if (candidateItem.content && Array.isArray(candidateItem.content.parts)) {
+        for (const part of candidateItem.content.parts) {
+          if (part.text) {
+            finalContent += part.text
+          }
+          if (part.functionCall && part.functionCall.name) {
+            toolCalls.push({
+              skill: part.functionCall.name,
+              params: (part.functionCall.args as Record<string, unknown>) || {},
+            })
+          }
         }
       }
     }
 
     return {
-      content: response.text || '',
+      content: finalContent || '',
       toolCalls: toolCalls,
       tokensUsed: {
         input: response.usageMetadata?.promptTokenCount || 0,

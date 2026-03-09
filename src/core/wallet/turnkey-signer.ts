@@ -7,7 +7,21 @@ export class TurnkeySigner implements Signer {
   public secretKey: Uint8Array = new Uint8Array() // Never exposed
 
   // Custom proxy method for asynchronous Turnkey enclave signing
-  public signTransaction?: (transaction: any) => Promise<any>
+  public async signTransaction(transaction: any): Promise<any> {
+    if (transaction.version !== undefined) {
+      // VersionedTransaction
+      const message = transaction.message.serialize()
+      const signature = await this.signMessage(message)
+      transaction.addSignature(this.publicKey, signature)
+      return transaction
+    } else {
+      // Legacy Transaction
+      const message = transaction.serializeMessage()
+      const signature = await this.signMessage(message)
+      transaction.addSignature(this.publicKey, Buffer.from(signature))
+      return transaction
+    }
+  }
 
   private client: TurnkeyClient
   private organizationId: string
