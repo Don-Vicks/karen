@@ -23,7 +23,7 @@ export class TelegramService {
   private setupHandlers() {
     this.bot.start((ctx) => {
       ctx.reply(
-        '🤖 Welcome to Karen! I am your autonomous Web3 assistant.\\n\\n' +
+        '🤖 Welcome to Karen! I am your autonomous Web3 assistant.\n\n' +
           'Send me a message to chat with your active agent.',
       )
     })
@@ -71,7 +71,7 @@ export class TelegramService {
           targetAgent.id,
           text,
         )
-        ctx.reply(`🤖 [${targetAgent.name}]\\n` + response)
+        ctx.reply(`🤖 [${targetAgent.name}]\n` + response)
       } catch (error: any) {
         console.error(`[Telegram] Error talking to agent:`, error)
         ctx.reply(`❌ Error from agent: ${error.message}`)

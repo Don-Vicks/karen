@@ -229,8 +229,15 @@ export class AgentRuntime {
       )
 
       // Ask the LLM one more time to summarize the result.
-      // We pass an empty tools array [] so it is physically forced to reply with text
-      // rather than getting distracted and firing another tool infinitely.
+      // We physically disable tools [] and inject a strict Conversational Override
+      // so the AI drops its "High-grade financial engine" system prompt persona
+      // and speaks naturally and warmly directly to the user.
+      messages.push({
+        role: 'user',
+        content:
+          'SYSTEM OVERRIDE: The tool execution is complete. Now, write a direct, highly conversational response to the user. Do NOT write a system log, do NOT write your internal reasoning, and do NOT speak in the third person. Speak naturally, warmly, and directly to the user regarding their message and the outcome.',
+      })
+
       try {
         response = await this.getLlm().chat(messages, [], this.config.llmModel)
       } catch (error: any) {
@@ -461,8 +468,6 @@ YOUR BEHAVIOR:
 1. Analyze your current wallet state and recent activity
 2. Make a decision based on your strategy
 3. Use EXACTLY ONE skill per action, or "wait" if no action is needed
-4. Check your balance before making swaps or transfers
-5. If your SOL balance is low, consider requesting an airdrop
 
 REASONING GUIDELINES:
 - You must write concise, professional execution logs that explain your plan clearly to the user.

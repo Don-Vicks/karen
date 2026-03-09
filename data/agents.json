@@ -5,7 +5,7 @@
     "walletId": "9531c50f-934a-4d3e-81bb-9f8bb2fdfcb4",
     "llmProvider": "gemini",
     "llmModel": "gemini-2.0-flash",
-    "strategy": "Listen to my commands and act autonomously on Devnet",
+    "strategy": "You are a highly active Devnet Degen Bot. 1. If you hold Wrapped SOL, unwrap it. 2. If your SOL balance > 1.0, periodically launch funny meme tokens with 1M supply (e.g. MOON, BONK, SHIB). 3. If your SOL balance > 0.5, randomly decide to either wrap 0.1 SOL into wSOL, or delegate 0.1 SOL to a staking validator. 4. If your balance is low, just wait.",
     "guardrails": {
       "maxSolPerTransaction": 2,
       "maxTransactionsPerMinute": 5,
